@@ -94,6 +94,13 @@
           <li>En combat, tu peux activer/désactiver librement tes fragments.</li>
           <li>Tu peux activer au maximum 3 fragments simultanément.</li>
           <li>Après chaque vague, tu choisis 1 fragment parmi 3 qui s’ajoute à ton inventaire.</li>
+          <li><strong>Feu</strong> : +60 immédiats + brûlure non cumulable de 15 dmg pendant 3 tours (réinitialisable si ré-appliqué).</li>
+          <li><strong>Poison</strong> : cumulable jusqu'à 5 stacks ; chaque stack dure 5 tours et inflige son dégât chaque début de tour.</li>
+          <li><strong>Éclair</strong> : 40 à la cible, puis 20 à un autre ennemi aléatoire.</li>
+          <li><strong>Marque</strong> : s'applique au prochain tour uniquement — tous les dégâts reçus ce tour-là sont doublés, puis la marque disparaît.</li>
+          <li><strong>Critique</strong> : si un fragment critique est actif, chaque autre fragment a 25% de chance de doubler ses dégâts.</li>
+          <li><strong>AoE</strong> : les autres fragments frappent chaque ennemi, les uns après les autres.</li>
+          <li><strong>Éclat</strong> : attaque basique à 70 dégâts.</li>
         </ul>
       </div>
     </div>
@@ -111,19 +118,28 @@
 <script>
 /* ---- PRNG ---- */
 function pseudoRandom(seed) {
-  let s = seed;
+  let s = seed >>> 0;
   return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
 }
 
-/* ---- Fragments ---- */
+/* ---- Fragments ----
+ Fields:
+ - fire: base immediate (60), burn damage per tick (15), burnDuration 3 (non cumulable)
+ - poison: per-stack damage per tick (base), duration 5, max 5 stacks
+ - lightning: base immediate (40), bounce 50% -> 20
+ - mark: applies mark for next turn
+ - crit: enables 25% chance to double other fragment's contributions
+ - aoe: makes other fragments hit ALL enemies
+ - shard: basic 70
+*/
 const FRAGMENTS_POOL = [
-  { id:'fire', name:'Flamme', desc:'Dégâts + brûlure (3 tours, non cumulable)', type:'fire', base:60, burn:15, burnDuration:3 },
-  { id:'poison', name:'Poison', desc:'DOT cumulable 5 tours', type:'poison', base:30, duration:5 },
-  { id:'lightning', name:'Foudre', desc:'Dégâts + rebond 50%', type:'lightning', base:40, bounce:0.5 },
-  { id:'mark', name:'Marque', desc:'Amplifie le prochain dégât', type:'mark', addFlat:50 },
-  { id:'crit', name:'Critique', desc:'Chance de critique', type:'crit', critBonus:0.25 },
-  { id:'aoe', name:'Onde', desc:'Dégâts à tous les ennemis', type:'aoe' },
-  { id:'shard', name:'Éclat', desc:'Dégâts basiques', type:'damage', base:70 }
+  { id:'fire', name:'Flamme', desc:'60 immédiats + brûlure (15 x3, non cumulable)', type:'fire', base:60, burn:15, burnDuration:3 },
+  { id:'poison', name:'Poison', desc:'DOT cumulable (max 5), 5 tours', type:'poison', base:30, duration:5 },
+  { id:'lightning', name:'Foudre', desc:'40 puis 20 à un autre ennemi', type:'lightning', base:40, bounce:0.5 },
+  { id:'mark', name:'Marque', desc:'Double tous les dégâts reçus au prochain tour', type:'mark' },
+  { id:'crit', name:'Critique', desc:'25% chance que les autres fragments fassent x2', type:'crit', critChance:0.25 },
+  { id:'aoe', name:'Onde', desc:'Frappe tous les ennemis', type:'aoe' },
+  { id:'shard', name:'Éclat', desc:'Attaque basique 70', type:'damage', base:70 }
 ];
 
 /* ---- Vagues ---- */
@@ -294,7 +310,14 @@ function spawnWave() {
 
   for (let i=0;i<cfg.n;i++){
     const hp = Math.floor(cfg.baseHp + rng() * cfg.baseHp * 0.5);
-    monsters.push({ id:i, hp, maxHp:hp, burn:null, poisons:[], marks:0 });
+    monsters.push({
+      id:i,
+      hp,
+      maxHp:hp,
+      burn: null,      // {damage:15, remaining:3}
+      poisons: [],     // array of {damage:base, remaining:5}
+      mark: null       // {activeNext:true}
+    });
   }
 
   renderWave();
@@ -308,9 +331,10 @@ function renderWave() {
   monsters.forEach((m,i)=>{
     const d = document.createElement('div');
     d.className = 'monster' + (m.hp<=0 ? ' dead' : '');
-    d.innerHTML = `<strong>Monstre #${i+1}</strong><br>HP: ${m.hp}/${m.maxHp}` +
-                  (m.burn && m.burn.remaining > 0 ? `<br><small>Brûlure: ${m.burn.damage} x${m.burn.remaining}</small>` : '') +
-                  (m.poisons && m.poisons.length ? `<br><small>Poison: ${m.poisons.length} stacks</small>` : '');
+    const burnText = (m.burn && m.burn.remaining > 0) ? `<br><small>Brûlure: ${m.burn.damage} x${m.burn.remaining}</small>` : '';
+    const poisonText = (m.poisons && m.poisons.length) ? `<br><small>Poison: ${m.poisons.length} stacks (durées : ${m.poisons.map(p=>p.remaining).join(',')})</small>` : '';
+    const markText = (m.mark && m.mark.activeNext) ? `<br><small>Marque active au prochain tour</small>` : '';
+    d.innerHTML = `<strong>Monstre #${i+1}</strong><br>HP: ${Math.max(0,m.hp)}/${m.maxHp}` + burnText + poisonText + markText;
     monstersDiv.appendChild(d);
   });
 }
@@ -326,16 +350,15 @@ function applyDOTsAll() {
   let dotDamage = 0;
   monsters.forEach(m=>{
     if (m.hp<=0) return;
-    // Brûlure (non cumulable)
+    // Brûlure : applique au début du tour si présente (non cumulable)
     if (m.burn && m.burn.remaining > 0) {
       m.hp -= m.burn.damage;
       dotDamage += m.burn.damage;
       m.burn.remaining -= 1;
       if (m.burn.remaining <= 0) m.burn = null;
     }
-    // Poisons (cumulable)
+    // Poisons : appliquer chaque stack
     if (m.poisons && m.poisons.length>0) {
-      // apply each stack
       for (let i = m.poisons.length-1; i>=0; i--) {
         const p = m.poisons[i];
         m.hp -= p.damage;
@@ -348,7 +371,7 @@ function applyDOTsAll() {
 
   if (dotDamage>0) {
     totalDamage += dotDamage;
-    log(`DOT inflige ${dotDamage} dégâts.`);
+    log(`DOTs : ${dotDamage} dégâts appliqués au début du tour.`);
     updateStats();
     renderWave();
   }
@@ -365,92 +388,171 @@ function castSpell() {
   const actives = fragments.filter(f=>f.active);
   if (actives.length === 0) return alert("Active au moins un fragment.");
 
+  // Au début du tour on applique les DOTs (brûlure, poison)
+  applyDOTsAll();
+
+  const aliveBefore = monsters.filter(m=>m.hp>0).length;
+  if (aliveBefore === 0) return log("Aucun ennemi vivant.");
+
   spellsCast++;
-  let castDamage = 0;
-  let isAoE = false;
-  let critMult = 1;
-
-  const target = pickTarget();
-  if (!target) return log("Aucun ennemi vivant.");
-
-  // accumulate direct damage and flags
-  actives.forEach(f=>{
-    if (f.type === 'damage') castDamage += f.base;
-    if (f.type === 'fire') castDamage += f.base;
-    if (f.type === 'poison') castDamage += f.base;
-    if (f.type === 'mark') target.marks += f.addFlat;
-    if (f.type === 'crit') {
-      const chance = f.critBonus + rng()*0.05;
-      if (rng() < chance) critMult = 1.75;
-    }
-    if (f.type === 'aoe') isAoE = true;
-    if (f.type === 'pierce') castDamage += f.bonus;
-    if (f.type === 'lightning') castDamage += f.base;
-    if (f.type === 'shard') castDamage += f.base;
-  });
-
   let damageThisCast = 0;
 
-  if (isAoE) {
-    monsters.forEach((m,i)=>{
-      if (m.hp<=0) return;
-      const dmg = Math.floor((castDamage + m.marks) * critMult) + m.marks;
-      m.marks = 0;
+  // Flags
+  const critActive = actives.some(f=>f.type === 'crit');
+  const isAoE = actives.some(f=>f.type === 'aoe');
+
+  // Helper to compute per-fragment contribution for a given target (returns damage dealt)
+  function applyFragmentToTarget(f, targetIdx) {
+    const m = monsters[targetIdx];
+    if (!m || m.hp<=0) return 0;
+    let dealt = 0;
+
+    // If fragment is crit or aoe special don't directly deal damage themselves except for types below.
+    // We'll handle types:
+    if (f.type === 'damage') {
+      let base = f.base || 0;
+      // crit chance for this fragment
+      if (critActive && Math.random() /* placeholder */) {}
+      // We'll use rng() for crit check
+      let fragDamage = base;
+      if (critActive && rng() < 0.25) {
+        fragDamage *= 2;
+        log(`Crit! Le fragment ${f.name} double ses dégâts (${fragDamage}).`);
+      }
+      // Mark doubling (mark applies to next turn only; here we apply doubling if the monster had a mark pending)
+      if (m.mark && m.mark.activeNext) {
+        fragDamage *= 2;
+      }
       const before = m.hp;
-      m.hp -= dmg;
-      damageThisCast += before - Math.max(0,m.hp);
+      m.hp -= Math.floor(fragDamage);
+      dealt += before - Math.max(0,m.hp);
+    }
+    else if (f.type === 'fire') {
+      // immediate base damage
+      let fragDamage = f.base || 0;
+      if (critActive && rng() < 0.25) {
+        fragDamage *= 2;
+        log(`Crit! Flamme double ses dégâts immédiats (${fragDamage}).`);
+      }
+      if (m.mark && m.mark.activeNext) fragDamage *= 2;
+      const before = m.hp;
+      m.hp -= Math.floor(fragDamage);
+      dealt += before - Math.max(0,m.hp);
 
-      // Apply special effects per fragment for each enemy hit (fire/poison/lightning handled below for single-target)
-    });
-    log(`Sort AoE : ${damageThisCast} dégâts.`);
-  }
-  else {
-    // Single target: apply direct damage
-    const dmg = Math.floor((castDamage + target.marks) * critMult) + target.marks;
-    target.marks = 0;
-    const before = target.hp;
-    target.hp -= dmg;
-    damageThisCast = before - Math.max(0,target.hp);
-    log(`Sort : ${damageThisCast} dégâts à un ennemi.`);
+      // apply burn: non cumulable — if already burning, reset duration
+      if (!m.burn || m.burn.remaining <= 0) {
+        m.burn = { damage: f.burn, remaining: f.burnDuration };
+        log(`Brûlure appliquée sur Monstre #${targetIdx+1} (${f.burn} x${f.burnDuration}).`);
+      } else {
+        // reset remaining to burnDuration
+        m.burn.remaining = f.burnDuration;
+        log(`Brûlure réinitialisée sur Monstre #${targetIdx+1} (${f.burn} x${f.burnDuration}).`);
+      }
+    }
+    else if (f.type === 'poison') {
+      // add a poison stack up to 5
+      if (!m.poisons) m.poisons = [];
+      if (m.poisons.length < 5) {
+        m.poisons.push({ damage: f.base, remaining: f.duration });
+        log(`Poison appliqué sur Monstre #${targetIdx+1} (${f.base} dmg x${f.duration}). Stacks: ${m.poisons.length}`);
+      } else {
+        // If already 5 stacks, refresh the oldest stack (or ignore). We'll refresh the oldest (FIFO)
+        m.poisons.sort((a,b)=>a.remaining - b.remaining);
+        m.poisons[0] = { damage: f.base, remaining: f.duration };
+        log(`Poison maximum atteint sur Monstre #${targetIdx+1} : on rafraîchit une stack (${f.base} x${f.duration}).`);
+      }
+      // Poison here doesn't do immediate damage (dots start next tick)
+    }
+    else if (f.type === 'lightning') {
+      // hit main target with base
+      let fragDamage = f.base || 0;
+      if (critActive && rng() < 0.25) {
+        fragDamage *= 2;
+        log(`Crit! Foudre double son coup (${fragDamage}).`);
+      }
+      if (m.mark && m.mark.activeNext) fragDamage *= 2;
+      const before = m.hp;
+      m.hp -= Math.floor(fragDamage);
+      dealt += before - Math.max(0,m.hp);
 
-    // Now handle special fragment effects per active fragment
-    actives.forEach(f=>{
-      if (f.type === 'fire') {
-        // apply burn only if not already burning
-        if (!target.burn || target.burn.remaining <= 0) {
-          target.burn = { damage: f.burn, remaining: f.burnDuration };
-          log(`Brûlure appliquée (${f.burn} dmg x${f.burnDuration}) à un ennemi.`);
-        } else {
-          log(`Brûlure non appliquée: l'ennemi a déjà une brûlure active.`);
+      // bounce to another random alive enemy (excluding this one)
+      const others = getAliveIndexes(targetIdx);
+      if (others.length > 0) {
+        const idx = Math.floor(rng() * others.length);
+        const otherIdx = others[idx];
+        const second = monsters[otherIdx];
+        const bounceDmg = Math.floor((f.base || 0) * f.bounce);
+        let finalBounce = bounceDmg;
+        if (critActive && rng() < 0.25) {
+          finalBounce *= 2;
+          log(`Crit sur rebond! La Foudre inflige x2 (${finalBounce}) au Monstre #${otherIdx+1}.`);
         }
+        // mark doubling applies on the bounced target too if it had a mark
+        if (second.mark && second.mark.activeNext) finalBounce *= 2;
+        const before2 = second.hp;
+        second.hp -= Math.floor(finalBounce);
+        dealt += before2 - Math.max(0, second.hp);
+        log(`Foudre rebondit: ${Math.floor(finalBounce)} dégâts à Monstre #${otherIdx+1}.`);
       }
-      if (f.type === 'poison') {
-        // add a poison stack
-        target.poisons.push({ damage: f.base, remaining: f.duration });
-        log(`Poison appliqué (${f.base} dmg x${f.duration}). Stacks: ${target.poisons.length}`);
-      }
-      if (f.type === 'lightning') {
-        // bounce 50% to another random alive enemy (excluding target)
-        const aliveOther = getAliveIndexes(monsters.indexOf(target));
-        if (aliveOther.length > 0) {
-          const idx = Math.floor(rng() * aliveOther.length);
-          const second = monsters[aliveOther[idx]];
-          const bounceDmg = Math.floor(f.base * f.bounce);
-          second.hp -= bounceDmg;
-          damageThisCast += bounceDmg > second.hp + bounceDmg ? second.hp + bounceDmg : bounceDmg; // approximate contribution
-          log(`Foudre rebondit et inflige ${bounceDmg} dégâts à Monstre #${aliveOther[idx]+1}.`);
-        }
-      }
-    });
+    }
+    else if (f.type === 'mark') {
+      // apply mark that affects next turn only
+      m.mark = { activeNext: true };
+      log(`Marque appliquée sur Monstre #${targetIdx+1} (double les dégâts reçus au prochain tour).`);
+    }
+    // other types have no additional effect here
+    return dealt;
   }
+
+  // If AoE is active: for each enemy, apply effects of non-aoe fragments to every enemy (one after another)
+  if (isAoE) {
+    // for each alive enemy in order
+    monsters.forEach((m, idx) => {
+      if (m.hp <= 0) return;
+      // For each active fragment (excluding aoe itself), apply to this enemy
+      actives.forEach(f => {
+        if (f.type === 'aoe') return; // skip
+        // Apply fragment to this target and sum damage
+        const d = applyFragmentToTarget(f, idx);
+        damageThisCast += d;
+      });
+    });
+    log(`Sort AoE : ${damageThisCast} dégâts infligés sur tous les ennemis.`);
+  } else {
+    // Single-target flow: pick primary target (lowest hp) and apply fragments to it
+    const primary = pickTarget();
+    if (!primary) return log("Aucun ennemi vivant.");
+    const primaryIdx = monsters.indexOf(primary);
+
+    // For deterministic application order, apply damage fragments first (so mark doubling affects all fragments in the cast)
+    // Apply each active fragment to the target (some like lightning may also affect a second target)
+    actives.forEach(f => {
+      const d = applyFragmentToTarget(f, primaryIdx);
+      damageThisCast += d;
+    });
+
+    log(`Sort : ${damageThisCast} dégâts infligés (principalement sur Monstre #${primaryIdx+1}).`);
+  }
+
+  // After damage applications, any mark that was activeNext should be removed (it only applied for this turn)
+  monsters.forEach((m,i)=>{
+    if (m.mark && m.mark.activeNext) {
+      // The mark's effect applied this turn (or not), but it disappears after this turn regardless
+      delete m.mark;
+      // Note: The specification says "puis la marque disparaitra, qu'il ai été frappé ou non."
+    }
+  });
 
   totalDamage += damageThisCast;
-  applyDOTsAll();
+
+  // After cast, update UI / stats
   renderWave();
   updateStats();
 
+  // Announce kills
   monsters.forEach((m,i)=>{ if (m.hp<=0) log(`Monstre #${i+1} vaincu !`); });
 
+  // Check wave cleared
   const alive = monsters.filter(m=>m.hp>0);
   if (alive.length === 0) {
     log(`Vague ${waveIndex+1} éliminée.`);
@@ -486,6 +588,7 @@ function endGame(victory) {
 
   log("Partie terminée.");
 }
+
 </script>
 
 </body>
