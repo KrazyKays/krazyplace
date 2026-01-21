@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>KrazyPlace — KGame</title>
+  <title>KrazyType — KGame</title>
   <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
+
   <style>
     html, body {
       height: 100%;
@@ -12,312 +13,194 @@
       display: flex;
       flex-direction: column;
     }
-    
+
     main {
       flex: 1;
     }
-    .hero {
-      padding: 0.5rem 0.5rem;
-      text-align: center;
-    }
+
     .container-narrow {
       max-width: 900px;
-      margin-left: auto;
-      margin-right: auto;
+      margin: auto;
     }
-    .daily-box {
+
+    .game-box {
       background: var(--surface-2);
       border-radius: var(--border-radius);
       padding: 1.5rem;
       margin-top: 1rem;
     }
-    #studyBtn {
-      margin-bottom: 0.5rem;
+
+    textarea {
+      font-family: monospace;
+      resize: vertical;
     }
-    table {
-      width: 100%;
-      text-align: center;
+
+    .rules span {
+      display: inline-block;
+      margin-right: 1rem;
+      font-weight: bold;
     }
-    td, th {
-      padding: 0.5rem;
+
+    .timer {
+      font-size: 1.2rem;
+      font-weight: bold;
     }
-    .actions button {
-      margin: 0.2rem;
-    }
+
     footer {
-      margin-top: 1rem;
       text-align: center;
       border-top: 1px solid var(--surface-3);
-      padding-top: 1rem;
-    }
-    #chartContainer {
-      margin-top: 2rem;
-      background: var(--surface-2);
-      border-radius: var(--border-radius);
       padding: 1rem;
     }
   </style>
 </head>
+
 <body>
-  <header class="container container-narrow">
-    <nav>
-      <ul>
-        <li class="logo"><a href="/krazyplace">KrazyPlace</a></li>
-        <li><a href="#">KGame</a></li>
-      </ul>
-    </nav>
-  </header>
-  
-  <main class="container container-narrow">
-    <section class="hero">
-      <h1>KrazyPlace — KGame💰</h1>
-      <p>Investis sur 10 ans et maximise ton capital !</p>
+<header class="container container-narrow">
+  <nav>
+    <ul>
+      <li class="logo"><a href="/krazyplace">KrazyPlace</a></li>
+      <li><a href="#">K-Typing</a></li>
+    </ul>
+  </nav>
+</header>
 
-      <!-- Boutons de choix de partie -->
-      <div style="margin: 1rem 0;">
-        <button id="dailyGameBtn">Partie du jour 🌞</button>
-        <button id="randomGameBtn">Partie aléatoire 🎲</button>
+<main class="container container-narrow">
+  <section>
+    <h1>⌨️ KrazyType</h1>
+    <p>Réécris le texte le plus vite possible… mais pas n'importe comment.</p>
+
+    <div style="margin:1rem 0">
+      <button id="dailyBtn">Partie du jour 🌞</button>
+      <button id="randomBtn">Partie aléatoire 🎲</button>
+    </div>
+
+    <div id="game" class="game-box" style="display:none">
+      <p class="timer">⏱️ Temps : <span id="time">0.00</span>s</p>
+
+      <h4>Texte à réécrire</h4>
+      <blockquote id="targetText"></blockquote>
+
+      <div class="rules">
+        <span id="bannedRule"></span>
+        <span id="swapRule"></span>
       </div>
 
-      <div class="daily-box" id="gameBox" style="display:none;">
-        <h3>Année <span id="year">1</span> / 10</h3>
-        <p>Argent : <strong id="money">1000</strong> ₭</p>
-        <p>Coût de stockage : 2% de la valeur détenue à chaque fin d’année.</p>
+      <textarea id="input" rows="5" placeholder="Commence à taper ici…" disabled></textarea>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Produit</th>
-              <th>Prix actuel</th>
-              <th>En stock</th>
-              <th class="actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="market"></tbody>
-        </table>
+      <p id="status"></p>
+    </div>
 
-        <div style="margin-top:1rem;">
-          <button id="studyBtn">Faire une étude de marché entre N+1 et N+2 (-100 ₭)</button>
-          <div id="studyResult" style="margin:0.5rem 0;font-style:italic;"></div>
-          <button id="nextYearBtn">Passer à l'année suivante (et payer le stockage)</button>
-        </div>
+    <div id="end" class="game-box" style="display:none">
+      <h2>🎉 Terminé !</h2>
+      <p>Temps final : <strong><span id="finalTime"></span>s</strong></p>
+    </div>
+  </section>
+</main>
 
-        <!-- Conteneur du graphique -->
-        <div id="chartContainer">
-          <h4>📈 Évolution des prix</h4>
-          <canvas id="priceChart"></canvas>
-        </div>
-      </div>
+<footer>
+  © KrazyPlace
+</footer>
 
-      <div id="endGame" style="display:none;margin-top:2rem;">
-        <h2>🎉 Fin de partie</h2>
-        <p>Score final : <strong id="finalScore"></strong> ₭</p>
-      </div>
-    </section>
-  </main>
-
-  <footer><p>© KrazyPlace</p></footer>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <script>
-  // === Générateur pseudo-aléatoire déterministe ===
-  function pseudoRandom(seed) {
-    let s = seed;
-    return () => {
-      s = (s * 16807) % 2147483647;
-      return (s - 1) / 2147483646;
-    };
-  }
-
-  const productsList = [
-    "Fer", "Orge", "Huile", "Bois", "Tissu", "Sel", "Thé", "Épices", "Soie", "Cuivre"
-  ];
-
-  let rng, products, basePrices, prices;
-  let year, money, stock;
-  let priceHistory = [];
-  let priceChart;
-
-  function startGame(seed) {
-    rng = pseudoRandom(seed);
-    products = [];
-    while (products.length < 3) {
-      const p = productsList[Math.floor(rng() * productsList.length)];
-      if (!products.includes(p)) products.push(p);
-    }
-
-    basePrices = products.map(() => Math.floor(50 + rng() * 150));
-    year = 1;
-    money = 1000;
-    stock = [0, 0, 0];
-    prices = generatePrices(year);
-    priceHistory = [prices.slice()];
-
-    document.getElementById("gameBox").style.display = "block";
-    document.getElementById("endGame").style.display = "none";
-    document.getElementById("studyResult").innerHTML = "";
-    renderMarket();
-    renderChart();
-  }
-
-  function generatePrices(year) {
-    return basePrices.map((base, i) => {
-      const factor = 1 + Math.sin((year + i) * 1.7 + base) * 0.15 + (rng() - 0.5) * 0.1;
-      return Math.max(5, Math.round(base * factor));
-    });
-  }
-
-  function renderMarket() {
-    const table = document.getElementById("market");
-    table.innerHTML = "";
-    products.forEach((prod, i) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${prod}</td>
-        <td>${prices[i]} ₭ <small>(${basePrices[i]} ₭)</small></td>
-        <td>${stock[i]}</td>
-        <td class="actions">
-          <button onclick="buy(${i})">Acheter</button>
-          <button onclick="sell(${i})">Vendre</button>
-        </td>`;
-      table.appendChild(tr);
-    });
-    document.getElementById("money").textContent = Math.round(money);
-    document.getElementById("year").textContent = year;
-  }
-
-  // === Actions joueur avec effet sur les prix ===
-  function buy(i) {
-    if (money >= prices[i]) {
-      money -= prices[i];
-      stock[i]++;
-      // Achat = demande ↑ → prix augmente légèrement (2 à 4 %)
-      prices[i] = Math.round(prices[i] * (1.02 + rng() * 0.02));
-      renderMarket();
-      updateChartAfterTrade();
-    }
-  }
-
-  function sell(i) {
-    if (stock[i] > 0) {
-      stock[i]--;
-      money += prices[i];
-      // Vente = offre ↑ → prix baisse légèrement (1.5 à 3 %)
-      prices[i] = Math.round(prices[i] * (0.97 - rng() * 0.015));
-      prices[i] = Math.max(5, prices[i]); // pas en dessous de 5 ₭
-      renderMarket();
-      updateChartAfterTrade();
-    }
-  }
-
-  // Étude de marché
-  document.getElementById("studyBtn").onclick = () => {
-    if (money < 100) return;
-    money -= 100;
-    const next = generatePrices(year + 1);
-    const after = generatePrices(year + 2);
-    const diffs = next.map((n, i) => ((after[i] - n) / n) * 100);
-    const result = diffs
-      .map((d, i) => {
-        const valeur = Math.round(d);
-        return `${products[i]} : ${
-          d > 0
-            ? "hausse probable de " + valeur + "% entre N+1 et N+2"
-            : "baisse probable de " + Math.abs(valeur) + "% entre N+1 et N+2"
-        }`;
-      })
-      .join("<br>");
-    document.getElementById("studyResult").innerHTML = result;
-    renderMarket();
+<script>
+/* === RNG déterministe === */
+function pseudoRandom(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
   };
+}
 
-  // Passer à l'année suivante
-  document.getElementById("nextYearBtn").onclick = () => {
-    const stockValue = stock.reduce((sum, q, i) => sum + q * prices[i], 0);
-    const storageCost = stockValue * 0.02;
-    money -= storageCost;
+const texts = [
+  "Le renard brun rapide saute par dessus le chien paresseux",
+  "Programmer est un art autant qu une science",
+  "La curiosite est le moteur de la connaissance",
+  "Les jeux de mots rendent les phrases amusantes"
+];
 
-    year++;
-    if (year > 10) {
-      endGame();
-      return;
-    }
+let rng;
+let bannedLetters = [];
+let swap = {};
+let startTime;
+let timerInterval;
 
-    prices = generatePrices(year);
-    priceHistory.push(prices.slice());
-    document.getElementById("studyResult").innerHTML = "";
-    renderMarket();
-    updateChart();
-  };
+/* === Démarrage === */
+function startGame(seed) {
+  rng = pseudoRandom(seed);
 
-  function endGame() {
-    const total = stock.reduce((sum, q, i) => sum + q * prices[i], 0);
-    money += total;
-    document.getElementById("gameBox").style.display = "none";
-    document.getElementById("endGame").style.display = "block";
-    document.getElementById("finalScore").textContent = Math.round(money);
+  const text = texts[Math.floor(rng() * texts.length)];
+  document.getElementById("targetText").textContent = text;
+
+  // lettres bannies
+  const alphabet = "aeiou";
+  bannedLetters = [alphabet[Math.floor(rng() * alphabet.length)]];
+  document.getElementById("bannedRule").textContent =
+    "🚫 Lettre interdite : " + bannedLetters.join(", ");
+
+  // lettres interchangées
+  const l1 = "a";
+  const l2 = "e";
+  swap = { [l1]: l2, [l2]: l1 };
+  document.getElementById("swapRule").textContent =
+    "🔄 Lettres inversées : a ↔ e";
+
+  document.getElementById("game").style.display = "block";
+  document.getElementById("end").style.display = "none";
+
+  const input = document.getElementById("input");
+  input.value = "";
+  input.disabled = false;
+  input.focus();
+
+  startTime = performance.now();
+  timerInterval = setInterval(updateTimer, 50);
+}
+
+function updateTimer() {
+  const t = (performance.now() - startTime) / 1000;
+  document.getElementById("time").textContent = t.toFixed(2);
+}
+
+/* === Validation === */
+document.getElementById("input").addEventListener("input", () => {
+  const value = document.getElementById("input").value;
+  const target = document.getElementById("targetText").textContent;
+
+  // longueur incorrecte
+  if (value.length !== target.length) return;
+
+  for (let i = 0; i < target.length; i++) {
+    let expected = target[i];
+
+    if (swap[expected]) expected = swap[expected];
+    if (bannedLetters.includes(target[i])) expected = "*";
+
+    if (value[i] !== expected) return;
   }
 
-  // === Graphique ===
-  function renderChart() {
-    const ctx = document.getElementById("priceChart").getContext("2d");
-    const labels = Array.from({ length: year }, (_, i) => "Année " + (i + 1));
-    const datasets = products.map((p, i) => ({
-      label: p,
-      data: priceHistory.map(row => row[i]),
-      borderWidth: 2,
-      fill: false,
-      tension: 0.2
-    }));
+  endGame();
+});
 
-    if (priceChart) priceChart.destroy();
+function endGame() {
+  clearInterval(timerInterval);
+  document.getElementById("input").disabled = true;
 
-    priceChart = new Chart(ctx, {
-      type: "line",
-      data: { labels, datasets },
-      options: {
-        responsive: true,
-        plugins: { legend: { position: "bottom" } },
-        scales: {
-          y: { beginAtZero: true, title: { display: true, text: "Prix (₭)" } },
-          x: { title: { display: true, text: "Années" } }
-        }
-      }
-    });
-  }
+  document.getElementById("game").style.display = "none";
+  document.getElementById("end").style.display = "block";
+  document.getElementById("finalTime").textContent =
+    ((performance.now() - startTime) / 1000).toFixed(2);
+}
 
-  function updateChart() {
-    const labels = Array.from({ length: year }, (_, i) => "Année " + (i + 1));
-    priceChart.data.labels = labels;
-    products.forEach((_, i) => {
-      priceChart.data.datasets[i].data = priceHistory.map(row => row[i]);
-    });
-    priceChart.update();
-  }
+/* === Modes === */
+document.getElementById("dailyBtn").onclick = () => {
+  const today = new Date().toISOString().split("T")[0];
+  const seed = [...today].reduce((a, c) => a + c.charCodeAt(0), 0);
+  startGame(seed);
+};
 
-  // Met à jour juste les derniers points quand on trade
-  function updateChartAfterTrade() {
-    if (!priceChart) return;
-    const current = priceHistory[priceHistory.length - 1];
-    priceChart.data.datasets.forEach((ds, i) => {
-      ds.data[year - 1] = prices[i];
-    });
-    priceChart.update();
-  }
-
-  // === Choix du mode de partie ===
-  document.getElementById("dailyGameBtn").onclick = () => {
-    const today = new Date().toISOString().split("T")[0];
-    const seed = today.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-    startGame(seed);
-  };
-
-  document.getElementById("randomGameBtn").onclick = () => {
-    const seed = Math.floor(Math.random() * 2147483647);
-    startGame(seed);
-  };
+document.getElementById("randomBtn").onclick = () => {
+  startGame(Math.floor(Math.random() * 2147483647));
+};
 </script>
 </body>
 </html>
