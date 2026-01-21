@@ -14,9 +14,7 @@
       flex-direction: column;
     }
 
-    main {
-      flex: 1;
-    }
+    main { flex: 1; }
 
     .container-narrow {
       max-width: 900px;
@@ -67,7 +65,7 @@
 <main class="container container-narrow">
   <section>
     <h1>KrazyPlace — K Typing</h1>
-    <p>Réécris le texte le plus vite possible… mais pas n'importe comment.</p>
+    <p>Réécris le texte… puis valide quand tu penses avoir fini.</p>
 
     <div style="margin:1rem 0">
       <button id="dailyBtn">Partie du jour 🌞</button>
@@ -85,7 +83,8 @@
         <span id="swapRule"></span>
       </div>
 
-      <textarea id="input" rows="5" placeholder="Commence à taper ici…" disabled></textarea>
+      <textarea id="input" rows="5" placeholder="Tape ici…"></textarea>
+      <button id="submitBtn">✅ Valider</button>
 
       <p id="status"></p>
     </div>
@@ -97,9 +96,7 @@
   </section>
 </main>
 
-<footer>
-  © KrazyPlace
-</footer>
+<footer>© KrazyPlace</footer>
 
 <script>
 /* === RNG déterministe === */
@@ -111,12 +108,18 @@ function pseudoRandom(seed) {
   };
 }
 
-const texts = [
-  "Le renard brun rapide saute par dessus le chien paresseux",
-  "Programmer est un art autant qu une science",
-  "La curiosite est le moteur de la connaissance",
-  "Les jeux de mots rendent les phrases amusantes"
-];
+/* === Génération de texte === */
+const subjects = ["Le renard", "Un programmeur", "La curiosité", "Ce jeu"];
+const verbs = ["explore", "transforme", "défie", "analyse"];
+const objects = ["le code", "les règles", "les lettres", "le clavier"];
+const endings = ["avec passion", "sans erreur", "rapidement", "en silence"];
+
+function generateText(rng) {
+  return `${pick(subjects)} ${pick(verbs)} ${pick(objects)} ${pick(endings)}.`;
+  function pick(arr) {
+    return arr[Math.floor(rng() * arr.length)];
+  }
+}
 
 let rng;
 let bannedLetters = [];
@@ -128,24 +131,32 @@ let timerInterval;
 function startGame(seed) {
   rng = pseudoRandom(seed);
 
-  const text = texts[Math.floor(rng() * texts.length)];
+  const text = generateText(rng);
   document.getElementById("targetText").textContent = text;
 
-  // lettres bannies
-  const alphabet = "aeiou";
+  const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
+
+  // lettre bannie
   bannedLetters = [alphabet[Math.floor(rng() * alphabet.length)]];
   document.getElementById("bannedRule").textContent =
-    "🚫 Lettre interdite : " + bannedLetters.join(", ");
+    "🚫 Lettre interdite : " + bannedLetters[0];
 
-  // lettres interchangées
-  const l1 = "a";
-  const l2 = "e";
+  // lettres échangeables (exclut les bannies)
+  const candidates = alphabet.filter(l => !bannedLetters.includes(l));
+  const l1 = candidates[Math.floor(rng() * candidates.length)];
+  let l2;
+  do {
+    l2 = candidates[Math.floor(rng() * candidates.length)];
+  } while (l2 === l1);
+
   swap = { [l1]: l2, [l2]: l1 };
+
   document.getElementById("swapRule").textContent =
-    "🔄 Lettres inversées : a ↔ e";
+    `🔄 Lettres inversées : ${l1} ↔ ${l2}`;
 
   document.getElementById("game").style.display = "block";
   document.getElementById("end").style.display = "none";
+  document.getElementById("status").textContent = "";
 
   const input = document.getElementById("input");
   input.value = "";
@@ -157,29 +168,39 @@ function startGame(seed) {
 }
 
 function updateTimer() {
-  const t = (performance.now() - startTime) / 1000;
-  document.getElementById("time").textContent = t.toFixed(2);
+  document.getElementById("time").textContent =
+    ((performance.now() - startTime) / 1000).toFixed(2);
 }
 
-/* === Validation === */
-document.getElementById("input").addEventListener("input", () => {
-  const value = document.getElementById("input").value;
+/* === Validation manuelle === */
+document.getElementById("submitBtn").onclick = () => {
+  const input = document.getElementById("input").value;
   const target = document.getElementById("targetText").textContent;
 
-  // longueur incorrecte
-  if (value.length !== target.length) return;
+  if (input.length !== target.length) {
+    document.getElementById("status").textContent =
+      "❌ Longueur incorrecte.";
+    return;
+  }
 
   for (let i = 0; i < target.length; i++) {
     let expected = target[i];
 
-    if (swap[expected]) expected = swap[expected];
-    if (bannedLetters.includes(target[i])) expected = "*";
+    if (bannedLetters.includes(target[i].toLowerCase())) {
+      expected = "*";
+    } else if (swap[target[i].toLowerCase()]) {
+      expected = swap[target[i].toLowerCase()];
+    }
 
-    if (value[i] !== expected) return;
+    if (input[i].toLowerCase() !== expected.toLowerCase()) {
+      document.getElementById("status").textContent =
+        `❌ Erreur à la position ${i + 1}`;
+      return;
+    }
   }
 
   endGame();
-});
+};
 
 function endGame() {
   clearInterval(timerInterval);
