@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>KrazyType — KGame</title>
+  <title>KrazyType — KrazyPlace</title>
   <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
 
   <style>
@@ -56,15 +56,15 @@
 <header class="container container-narrow">
   <nav>
     <ul>
-      <li class="logo"><a href="/krazyplace">KrazyPlace</a></li>
-      <li><a href="#">K Typing</a></li>
+      <li><a href="#">KrazyPlace</a></li>
+      <li>K Typing</li>
     </ul>
   </nav>
 </header>
 
 <main class="container container-narrow">
   <section>
-    <h1>KrazyPlace — K Typing</h1>
+    <h1>KrazyType</h1>
     <p>Réécris le texte… puis valide quand tu penses avoir fini.</p>
 
     <div style="margin:1rem 0">
@@ -91,7 +91,9 @@
 
     <div id="end" class="game-box" style="display:none">
       <h2>🎉 Terminé !</h2>
-      <p>Temps final : <strong><span id="finalTime"></span>s</strong></p>
+      <p>Temps : <strong><span id="finalTime"></span>s</strong></p>
+      <p>Erreurs : <strong><span id="finalErrors"></span></strong></p>
+      <p>Score : <strong><span id="finalScore"></span></strong></p>
     </div>
   </section>
 </main>
@@ -99,7 +101,7 @@
 <footer>© KrazyPlace</footer>
 
 <script>
-/* === RNG déterministe === */
+/* ================= RNG ================= */
 function pseudoRandom(seed) {
   let s = seed;
   return () => {
@@ -108,48 +110,77 @@ function pseudoRandom(seed) {
   };
 }
 
-/* === Génération de texte === */
-const subjects = ["Le renard", "Un programmeur", "La curiosité", "Ce jeu"];
-const verbs = ["explore", "transforme", "défie", "analyse"];
-const objects = ["le code", "les règles", "les lettres", "le clavier"];
-const endings = ["avec passion", "sans erreur", "rapidement", "en silence"];
-
+/* ============ TEXTE ============ */
 function generateText(rng) {
-  return `${pick(subjects)} ${pick(verbs)} ${pick(objects)} ${pick(endings)}.`;
-  function pick(arr) {
-    return arr[Math.floor(rng() * arr.length)];
-  }
+  const texts = [
+    "Le clavier devient un piège pour le joueur rapide",
+    "Ce jeu modifie les lettres et perturbe la frappe",
+    "La logique défie le cerveau et les doigts",
+    "Le code transforme une phrase simple en défi"
+  ];
+  return texts[Math.floor(rng() * texts.length)] + ".";
 }
 
+/* ============ UTILITAIRES ============ */
+function lettersInText(text) {
+  return [...new Set(text.toLowerCase().match(/[a-z]/g))];
+}
+
+function pickRandom(rng, arr) {
+  return arr[Math.floor(rng() * arr.length)];
+}
+
+/* ============ RÈGLES BASÉES SUR LE TEXTE ============ */
+function generateRulesFromText(rng, text) {
+  const letters = lettersInText(text);
+
+  const frequency = {};
+  for (const c of text.toLowerCase()) {
+    if (c >= "a" && c <= "z") {
+      frequency[c] = (frequency[c] || 0) + 1;
+    }
+  }
+
+  const bannable = letters.filter(l => frequency[l] >= 2);
+  const banned = pickRandom(rng, bannable);
+
+  const swappable = letters.filter(l => l !== banned);
+  const l1 = pickRandom(rng, swappable);
+  let l2;
+  do {
+    l2 = pickRandom(rng, swappable);
+  } while (l2 === l1);
+
+  return {
+    bannedLetters: [banned],
+    swap: { [l1]: l2, [l2]: l1 }
+  };
+}
+
+/* ============ ÉTAT ============ */
 let rng;
 let bannedLetters = [];
 let swap = {};
 let startTime;
 let timerInterval;
+let errorCount = 0;
 
-/* === Démarrage === */
+/* ============ JEU ============ */
 function startGame(seed) {
   rng = pseudoRandom(seed);
+  errorCount = 0;
 
   const text = generateText(rng);
   document.getElementById("targetText").textContent = text;
 
-  const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
+  const rules = generateRulesFromText(rng, text);
+  bannedLetters = rules.bannedLetters;
+  swap = rules.swap;
 
-  // lettre bannie
-  bannedLetters = [alphabet[Math.floor(rng() * alphabet.length)]];
+  const [l1, l2] = Object.keys(swap);
+
   document.getElementById("bannedRule").textContent =
     "🚫 Lettre interdite : " + bannedLetters[0];
-
-  // lettres échangeables (exclut les bannies)
-  const candidates = alphabet.filter(l => !bannedLetters.includes(l));
-  const l1 = candidates[Math.floor(rng() * candidates.length)];
-  let l2;
-  do {
-    l2 = candidates[Math.floor(rng() * candidates.length)];
-  } while (l2 === l1);
-
-  swap = { [l1]: l2, [l2]: l1 };
 
   document.getElementById("swapRule").textContent =
     `🔄 Lettres inversées : ${l1} ↔ ${l2}`;
@@ -172,30 +203,30 @@ function updateTimer() {
     ((performance.now() - startTime) / 1000).toFixed(2);
 }
 
-/* === Validation manuelle === */
+/* ============ VALIDATION ============ */
 document.getElementById("submitBtn").onclick = () => {
   const input = document.getElementById("input").value;
   const target = document.getElementById("targetText").textContent;
 
   if (input.length !== target.length) {
     document.getElementById("status").textContent =
-      "❌ Longueur incorrecte.";
+      "❌ Longueur incorrecte";
     return;
   }
 
-  for (let i = 0; i < target.length; i++) {
-    let expected = target[i];
+  errorCount = 0;
 
-    if (bannedLetters.includes(target[i].toLowerCase())) {
+  for (let i = 0; i < target.length; i++) {
+    let expected = target[i].toLowerCase();
+
+    if (bannedLetters.includes(expected)) {
       expected = "*";
-    } else if (swap[target[i].toLowerCase()]) {
-      expected = swap[target[i].toLowerCase()];
+    } else if (swap[expected]) {
+      expected = swap[expected];
     }
 
-    if (input[i].toLowerCase() !== expected.toLowerCase()) {
-      document.getElementById("status").textContent =
-        `❌ Erreur à la position ${i + 1}`;
-      return;
+    if (input[i].toLowerCase() !== expected) {
+      errorCount++;
     }
   }
 
@@ -204,15 +235,22 @@ document.getElementById("submitBtn").onclick = () => {
 
 function endGame() {
   clearInterval(timerInterval);
-  document.getElementById("input").disabled = true;
+
+  const time = (performance.now() - startTime) / 1000;
+  const score = Math.max(
+    0,
+    Math.floor(10000 - (time * 100) - (errorCount * 500))
+  );
 
   document.getElementById("game").style.display = "none";
   document.getElementById("end").style.display = "block";
-  document.getElementById("finalTime").textContent =
-    ((performance.now() - startTime) / 1000).toFixed(2);
+
+  document.getElementById("finalTime").textContent = time.toFixed(2);
+  document.getElementById("finalErrors").textContent = errorCount;
+  document.getElementById("finalScore").textContent = score;
 }
 
-/* === Modes === */
+/* ============ MODES ============ */
 document.getElementById("dailyBtn").onclick = () => {
   const today = new Date().toISOString().split("T")[0];
   const seed = [...today].reduce((a, c) => a + c.charCodeAt(0), 0);
