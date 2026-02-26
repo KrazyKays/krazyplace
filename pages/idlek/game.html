@@ -325,6 +325,16 @@ function gameLoop(){
   ){
     running = false;
     document.getElementById("finalTime").textContent = elapsed.toFixed(2);
+
+    // Calcul des runes gaspillées
+    const wasted = 
+      Math.max(0, totals.north - goals.north) +
+      Math.max(0, totals.south - goals.south) +
+      Math.max(0, totals.east  - goals.east)  +
+      Math.max(0, totals.west  - goals.west);
+
+    document.getElementById("wastedRunes").textContent = Math.floor(wasted);
+    
     document.getElementById("endBox").style.display = "block";
     clearInterval(window.gameInterval);
     window.gameInterval = null;
