@@ -187,8 +187,11 @@ function startGame(seed){
   startTime = performance.now();
   running = true;
 
-  requestAnimationFrame(loop);
-  draw();
+  // Nouvelle boucle qui fonctionne même en arrière-plan
+  lastUpdate = performance.now();
+  if(!window.gameInterval) {
+    window.gameInterval = setInterval(gameLoop, 50); // toutes les 50ms
+  }
 }
 
 /* MISSIONS */
@@ -282,14 +285,16 @@ function tryBoost(i){
   }
 }
 
-/* BOUCLE */
+/* BOUCLE MODIFIÉE */
 
-function loop(){
+let lastUpdate = 0;
 
+function gameLoop(){
   if(!running) return;
 
   const now = performance.now();
-  const elapsed = (now - startTime)/1000;
+  const delta = (now - lastUpdate)/1000; // delta en secondes
+  lastUpdate = now;
 
   let north=1, south=1, east=1, west=1;
 
@@ -300,15 +305,16 @@ function loop(){
     west  = 1 - x;
   }
 
-  totals.north += (north*globalMultiplier)/60;
-  totals.south += (south*globalMultiplier)/60;
-  totals.east  += (east*globalMultiplier)/60;
-  totals.west  += (west*globalMultiplier)/60;
+  totals.north += (north*globalMultiplier)*delta;
+  totals.south += (south*globalMultiplier)*delta;
+  totals.east  += (east*globalMultiplier)*delta;
+  totals.west  += (west*globalMultiplier)*delta;
 
   updateTotals();
   updateRates(north,south,east,west);
   updateMissions();
 
+  const elapsed = (now - startTime)/1000;
   document.getElementById("timer").textContent = elapsed.toFixed(1);
 
   if(
@@ -320,10 +326,12 @@ function loop(){
     running = false;
     document.getElementById("finalTime").textContent = elapsed.toFixed(2);
     document.getElementById("endBox").style.display = "block";
+    clearInterval(window.gameInterval);
+    window.gameInterval = null;
     return;
   }
 
-  requestAnimationFrame(loop);
+  draw();
 }
 
 /* UI */
