@@ -83,9 +83,40 @@
 
       <div id="gameArea" style="display:none;">
 
-        <h3>Objectif quotidien : <span id="goal"></span> runes</h3>
         <p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
-        <p>Total runes : <strong id="totalRunes">0</strong></p>
+        <h3>Objectifs quotidiens</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Rune</th>
+              <th>Objectif</th>
+              <th>Actuel</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Nord</td>
+              <td id="goalNorth"></td>
+              <td id="totalNorth">0</td>
+            </tr>
+            <tr>
+              <td>Sud</td>
+              <td id="goalSouth"></td>
+              <td id="totalSouth">0</td>
+            </tr>
+            <tr>
+              <td>Est</td>
+              <td id="goalEast"></td>
+              <td id="totalEast">0</td>
+            </tr>
+            <tr>
+              <td>Ouest</td>
+              <td id="goalWest"></td>
+              <td id="totalWest">0</td>
+            </tr>
+          </tbody>
+        </table>
+
 
         <canvas id="controlCanvas" width="300" height="300"
           style="margin-top:1rem;border:1px solid var(--surface-3);border-radius:50%;">
