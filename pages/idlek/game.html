@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>KrazyPlace — Idle K</title>
+  <title>KrazyPlace — Idle Runes</title>
   <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
   <style>
     html, body {
@@ -12,139 +12,109 @@
       display: flex;
       flex-direction: column;
     }
-    
-    main {
-      flex: 1;
-    }
-    .hero {
-      padding: 0.5rem 0.5rem;
-      text-align: center;
-    }
-    .logo a {
-      color: lightblue;
-    }
+    main { flex: 1; }
+    .hero { padding: 0.5rem; text-align: center; }
+    .logo a { color: lightblue; }
     .container-narrow {
       max-width: 900px;
       margin-left: auto;
       margin-right: auto;
     }
-    .daily-box {
-      background: var(--surface-2);
-      border-radius: var(--border-radius);
-      padding: 1.5rem;
-      margin-top: 1rem;
-    }
-    #studyBtn {
-      margin-bottom: 0.5rem;
-    }
-    table {
-      width: 100%;
-      text-align: center;
-    }
-    td, th {
-      padding: 0.5rem;
-    }
-    .actions button {
-      margin: 0.2rem;
-    }
+    table { width: 100%; text-align: center; }
+    td, th { padding: 0.5rem; }
     footer {
       margin-top: 1rem;
       text-align: center;
       border-top: 1px solid var(--surface-3);
       padding-top: 1rem;
     }
-    #chartContainer {
-      margin-top: 2rem;
-      background: var(--surface-2);
-      border-radius: var(--border-radius);
-      padding: 1rem;
-    }
   </style>
 </head>
 <body>
-  <header class="container container-narrow">
-    <nav>
-      <ul>
-        <li class="logo"><a href="/krazyplace">KrazyPlace</a></li>
-        <li><a href="#">Idle K</a></li>
-      </ul>
-    </nav>
-  </header>
-  
-  <main class="container container-narrow">
-    <section class="hero">
-      <h1>Idle Runes — Daily Speedrun</h1>
-      <p>Choisis un point dans le cercle pour optimiser ta génération.</p>
 
-      <div style="margin:1rem 0;">
-        <button id="dailyBtn">Partie du jour 🌞</button>
-        <button id="randomBtn">Seed aléatoire 🎲</button>
-      </div>
+<header class="container container-narrow">
+  <nav>
+    <ul>
+      <li class="logo"><a href="/krazyplace">KrazyPlace</a></li>
+      <li><a href="#">Idle Runes</a></li>
+    </ul>
+  </nav>
+</header>
 
-      <div id="gameArea" style="display:none;">
+<main class="container container-narrow">
+<section class="hero">
 
-        <p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
-        <h3>Objectifs quotidiens</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Rune</th>
-              <th>Objectif</th>
-              <th>Actuel</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Nord</td>
-              <td id="goalNorth"></td>
-              <td id="totalNorth">0</td>
-            </tr>
-            <tr>
-              <td>Sud</td>
-              <td id="goalSouth"></td>
-              <td id="totalSouth">0</td>
-            </tr>
-            <tr>
-              <td>Est</td>
-              <td id="goalEast"></td>
-              <td id="totalEast">0</td>
-            </tr>
-            <tr>
-              <td>Ouest</td>
-              <td id="goalWest"></td>
-              <td id="totalWest">0</td>
-            </tr>
-          </tbody>
-        </table>
+<h1>Idle Runes — Daily Speedrun</h1>
+<p>Choisis un point dans le cercle pour optimiser ta génération.</p>
 
+<div style="margin:1rem 0;">
+  <button id="dailyBtn">Partie du jour 🌞</button>
+  <button id="randomBtn">Seed aléatoire 🎲</button>
+</div>
 
-        <canvas id="controlCanvas" width="300" height="300"
-          style="margin-top:1rem;border:1px solid var(--surface-3);border-radius:50%;">
-        </canvas>
+<div id="gameArea" style="display:none;">
 
-        <div style="margin-top:1rem;">
-          Nord : <span id="northRate"></span> /s |
-          Sud : <span id="southRate"></span> /s |
-          Est : <span id="eastRate"></span> /s |
-          Ouest : <span id="westRate"></span> /s
-        </div>
+<h3>Objectifs quotidiens</h3>
 
-        <div id="endBox" style="display:none;margin-top:1.5rem;">
-          <h2>🏁 Objectif atteint</h2>
-          <p>Temps final : <strong id="finalTime"></strong>s</p>
-        </div>
+<table>
+<thead>
+<tr>
+<th>Rune</th>
+<th>Objectif</th>
+<th>Actuel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nord</td>
+<td id="goalNorth"></td>
+<td id="totalNorth">0</td>
+</tr>
+<tr>
+<td>Sud</td>
+<td id="goalSouth"></td>
+<td id="totalSouth">0</td>
+</tr>
+<tr>
+<td>Est</td>
+<td id="goalEast"></td>
+<td id="totalEast">0</td>
+</tr>
+<tr>
+<td>Ouest</td>
+<td id="goalWest"></td>
+<td id="totalWest">0</td>
+</tr>
+</tbody>
+</table>
 
-      </div>
-    </section>
-  </main>
+<p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
 
-  <footer><p>© KrazyPlace</p></footer>
+<canvas id="controlCanvas" width="300" height="300"
+style="margin-top:1rem;border:1px solid var(--surface-3);border-radius:50%;"></canvas>
 
-  <script>
-/* ===========================
-   RANDOM DÉTERMINISTE
-=========================== */
-function pseudoRandom(seed) {
+<div style="margin-top:1rem;">
+Nord : <span id="northRate"></span> /s |
+Sud : <span id="southRate"></span> /s |
+Est : <span id="eastRate"></span> /s |
+Ouest : <span id="westRate"></span> /s
+</div>
+
+<div id="endBox" style="display:none;margin-top:1.5rem;">
+<h2>🏁 Objectifs atteints</h2>
+<p>Temps final : <strong id="finalTime"></strong>s</p>
+</div>
+
+</div>
+</section>
+</main>
+
+<footer><p>© KrazyPlace</p></footer>
+
+<script>
+
+/* RANDOM DÉTERMINISTE */
+function pseudoRandom(seed){
   let s = seed;
   return () => {
     s = (s * 16807) % 2147483647;
@@ -153,8 +123,9 @@ function pseudoRandom(seed) {
 }
 
 let rng;
-let goal = 0;
-let totalRunes = 0;
+let goals = {};
+let totals = { north:0, south:0, east:0, west:0 };
+
 let startTime;
 let running = false;
 let pointLocked = false;
@@ -167,26 +138,36 @@ const ctx = canvas.getContext("2d");
 const radius = canvas.width / 2;
 const center = { x: radius, y: radius };
 
-/* ===========================
-   INITIALISATION
-=========================== */
+/* INITIALISATION */
 
-function startGame(seed) {
+function startGame(seed){
   rng = pseudoRandom(seed);
 
-  goal = 5000 + Math.floor(rng() * 5000);
-  document.getElementById("goal").textContent = goal;
+  // Total entre 1200 et 1600
+  const totalGoal = 1200 + Math.floor(rng()*401);
 
-  totalRunes = 0;
-  document.getElementById("totalRunes").textContent = 0;
+  let parts = [rng(), rng(), rng(), rng()];
+  let sum = parts.reduce((a,b)=>a+b,0);
+
+  goals.north = Math.floor((parts[0]/sum)*totalGoal);
+  goals.south = Math.floor((parts[1]/sum)*totalGoal);
+  goals.east  = Math.floor((parts[2]/sum)*totalGoal);
+  goals.west  = totalGoal - goals.north - goals.south - goals.east;
+
+  totals = { north:0, south:0, east:0, west:0 };
+
+  document.getElementById("goalNorth").textContent = goals.north;
+  document.getElementById("goalSouth").textContent = goals.south;
+  document.getElementById("goalEast").textContent  = goals.east;
+  document.getElementById("goalWest").textContent  = goals.west;
+
+  updateTotals();
+
   document.getElementById("timer").textContent = "0.0";
-
   document.getElementById("endBox").style.display = "none";
   document.getElementById("gameArea").style.display = "block";
 
-  x = 0;
-  y = 0;
-
+  x = 0; y = 0;
   pointLocked = false;
 
   startTime = performance.now();
@@ -196,38 +177,39 @@ function startGame(seed) {
   draw();
 }
 
-/* ===========================
-   BOUCLE IDLE
-=========================== */
+/* BOUCLE */
 
-function loop() {
-  if (!running) return;
+function loop(){
+  if(!running) return;
 
   const now = performance.now();
-  const elapsed = (now - startTime) / 1000;
+  const elapsed = (now - startTime)/1000;
 
-  let north = 1;
-  let south = 1;
-  let east  = 1;
-  let west  = 1;
+  let north=1, south=1, east=1, west=1;
 
-  if (pointLocked) {
+  if(pointLocked){
     north = 1 + y;
     south = 1 - y;
     east  = 1 + x;
     west  = 1 - x;
   }
 
-  const totalRate = north + south + east + west;
+  totals.north += north/60;
+  totals.south += south/60;
+  totals.east  += east/60;
+  totals.west  += west/60;
 
-  totalRunes += totalRate / 60;
+  updateTotals();
+  updateRates(north,south,east,west);
 
   document.getElementById("timer").textContent = elapsed.toFixed(1);
-  document.getElementById("totalRunes").textContent = Math.floor(totalRunes);
 
-  updateRates(north, south, east, west);
-
-  if (totalRunes >= goal) {
+  if(
+    totals.north >= goals.north &&
+    totals.south >= goals.south &&
+    totals.east  >= goals.east  &&
+    totals.west  >= goals.west
+  ){
     running = false;
     document.getElementById("finalTime").textContent = elapsed.toFixed(2);
     document.getElementById("endBox").style.display = "block";
@@ -237,73 +219,53 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-/* ===========================
-   AFFICHAGE
-=========================== */
+/* UI */
 
-function updateRates(n, s, e, w) {
+function updateTotals(){
+  document.getElementById("totalNorth").textContent = Math.floor(totals.north);
+  document.getElementById("totalSouth").textContent = Math.floor(totals.south);
+  document.getElementById("totalEast").textContent  = Math.floor(totals.east);
+  document.getElementById("totalWest").textContent  = Math.floor(totals.west);
+}
+
+function updateRates(n,s,e,w){
   document.getElementById("northRate").textContent = n.toFixed(2);
   document.getElementById("southRate").textContent = s.toFixed(2);
   document.getElementById("eastRate").textContent  = e.toFixed(2);
   document.getElementById("westRate").textContent  = w.toFixed(2);
 }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // Cercle
   ctx.beginPath();
-  ctx.arc(center.x, center.y, radius - 5, 0, Math.PI * 2);
+  ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
   ctx.stroke();
 
-  // Axes X et Y
   ctx.beginPath();
-  ctx.moveTo(0, center.y);
-  ctx.lineTo(canvas.width, center.y);
-  ctx.moveTo(center.x, 0);
-  ctx.lineTo(center.x, canvas.height);
-  ctx.strokeStyle = "#888";
+  ctx.moveTo(0,center.y);
+  ctx.lineTo(canvas.width,center.y);
+  ctx.moveTo(center.x,0);
+  ctx.lineTo(center.x,canvas.height);
+  ctx.strokeStyle="#888";
   ctx.stroke();
 
-  // Graduations
-  ctx.strokeStyle = "#bbb";
-  for (let i = -1; i <= 1; i += 0.5) {
-    const px = center.x + i * (radius - 5);
-    const py = center.y - i * (radius - 5);
-
-    // graduation X
+  if(pointLocked){
+    const px = center.x + x*(radius-5);
+    const py = center.y - y*(radius-5);
     ctx.beginPath();
-    ctx.moveTo(px, center.y - 5);
-    ctx.lineTo(px, center.y + 5);
-    ctx.stroke();
-
-    // graduation Y
-    ctx.beginPath();
-    ctx.moveTo(center.x - 5, py);
-    ctx.lineTo(center.x + 5, py);
-    ctx.stroke();
-  }
-
-  // Point seulement si fixé
-  if (pointLocked) {
-    const cursorX = center.x + x * (radius - 5);
-    const cursorY = center.y - y * (radius - 5);
-
-    ctx.beginPath();
-    ctx.arc(cursorX, cursorY, 6, 0, Math.PI * 2);
-    ctx.fillStyle = "red";
+    ctx.arc(px,py,6,0,Math.PI*2);
+    ctx.fillStyle="red";
     ctx.fill();
   }
 
-  ctx.strokeStyle = "black";
+  ctx.strokeStyle="black";
 }
 
-/* ===========================
-   INPUT SOURIS
-=========================== */
+/* INPUT */
 
-canvas.addEventListener("click", (e) => {
-  if (!running) return;
+canvas.addEventListener("click",(e)=>{
+  if(!running) return;
 
   const rect = canvas.getBoundingClientRect();
   let mx = e.clientX - rect.left - center.x;
@@ -311,36 +273,35 @@ canvas.addEventListener("click", (e) => {
 
   my = -my;
 
-  let nx = mx / (radius - 5);
-  let ny = my / (radius - 5);
+  let nx = mx/(radius-5);
+  let ny = my/(radius-5);
 
-  const dist = Math.sqrt(nx * nx + ny * ny);
-  if (dist > 1) {
-    nx /= dist;
-    ny /= dist;
+  const dist = Math.sqrt(nx*nx+ny*ny);
+  if(dist>1){
+    nx/=dist;
+    ny/=dist;
   }
 
-  x = nx;
-  y = ny;
-  pointLocked = true;
+  x=nx;
+  y=ny;
+  pointLocked=true;
 
   draw();
 });
 
-/* ===========================
-   BOUTONS
-=========================== */
+/* BOUTONS */
 
-document.getElementById("dailyBtn").onclick = () => {
+document.getElementById("dailyBtn").onclick=()=>{
   const today = new Date().toISOString().split("T")[0];
-  const seed = today.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const seed = today.split("").reduce((a,c)=>a+c.charCodeAt(0),0);
   startGame(seed);
 };
 
-document.getElementById("randomBtn").onclick = () => {
-  const seed = Math.floor(Math.random() * 2147483647);
+document.getElementById("randomBtn").onclick=()=>{
+  const seed = Math.floor(Math.random()*2147483647);
   startGame(seed);
 };
+
 </script>
 </body>
 </html>
