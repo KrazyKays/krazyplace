@@ -126,6 +126,7 @@ let goal = 0;
 let totalRunes = 0;
 let startTime;
 let running = false;
+let pointLocked = false;
 
 let x = 0;
 let y = 0;
@@ -155,6 +156,8 @@ function startGame(seed) {
   x = 0;
   y = 0;
 
+  pointLocked = false;
+
   startTime = performance.now();
   running = true;
 
@@ -172,10 +175,17 @@ function loop() {
   const now = performance.now();
   const elapsed = (now - startTime) / 1000;
 
-  const north = 1 + y;
-  const south = 1 - y;
-  const east  = 1 + x;
-  const west  = 1 - x;
+  let north = 1;
+  let south = 1;
+  let east  = 1;
+  let west  = 1;
+
+  if (pointLocked) {
+    north = 1 + y;
+    south = 1 - y;
+    east  = 1 + x;
+    west  = 1 - x;
+  }
 
   const totalRate = north + south + east + west;
 
@@ -210,23 +220,58 @@ function updateRates(n, s, e, w) {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Cercle
   ctx.beginPath();
   ctx.arc(center.x, center.y, radius - 5, 0, Math.PI * 2);
   ctx.stroke();
 
-  const cursorX = center.x + x * (radius - 5);
-  const cursorY = center.y - y * (radius - 5);
-
+  // Axes X et Y
   ctx.beginPath();
-  ctx.arc(cursorX, cursorY, 6, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(0, center.y);
+  ctx.lineTo(canvas.width, center.y);
+  ctx.moveTo(center.x, 0);
+  ctx.lineTo(center.x, canvas.height);
+  ctx.strokeStyle = "#888";
+  ctx.stroke();
+
+  // Graduations
+  ctx.strokeStyle = "#bbb";
+  for (let i = -1; i <= 1; i += 0.5) {
+    const px = center.x + i * (radius - 5);
+    const py = center.y - i * (radius - 5);
+
+    // graduation X
+    ctx.beginPath();
+    ctx.moveTo(px, center.y - 5);
+    ctx.lineTo(px, center.y + 5);
+    ctx.stroke();
+
+    // graduation Y
+    ctx.beginPath();
+    ctx.moveTo(center.x - 5, py);
+    ctx.lineTo(center.x + 5, py);
+    ctx.stroke();
+  }
+
+  // Point seulement si fixé
+  if (pointLocked) {
+    const cursorX = center.x + x * (radius - 5);
+    const cursorY = center.y - y * (radius - 5);
+
+    ctx.beginPath();
+    ctx.arc(cursorX, cursorY, 6, 0, Math.PI * 2);
+    ctx.fillStyle = "red";
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = "black";
 }
 
 /* ===========================
    INPUT SOURIS
 =========================== */
 
-canvas.addEventListener("mousemove", (e) => {
+canvas.addEventListener("click", (e) => {
   if (!running) return;
 
   const rect = canvas.getBoundingClientRect();
@@ -246,6 +291,7 @@ canvas.addEventListener("mousemove", (e) => {
 
   x = nx;
   y = ny;
+  pointLocked = true;
 
   draw();
 });
