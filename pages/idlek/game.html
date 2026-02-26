@@ -244,7 +244,7 @@ function updateMissions(){
     const dot = (x*m.direction.x + y*m.direction.y);
     const factor = Math.max(0, dot);
 
-    m.progress += factor * 0.8;
+    m.progress += factor * 0.2;
 
     if(m.progress >= 100){
       m.progress = 100;
