@@ -335,10 +335,10 @@ function updateTotals(){
 }
 
 function updateRates(n,s,e,w){
-  document.getElementById("northRate").textContent = n.toFixed(2);
-  document.getElementById("southRate").textContent = s.toFixed(2);
-  document.getElementById("eastRate").textContent  = e.toFixed(2);
-  document.getElementById("westRate").textContent  = w.toFixed(2);
+  document.getElementById("northRate").textContent = (n*globalMultiplier).toFixed(2);
+  document.getElementById("southRate").textContent = (s*globalMultiplier).toFixed(2);
+  document.getElementById("eastRate").textContent  = (e*globalMultiplier).toFixed(2);
+  document.getElementById("westRate").textContent  = (w*globalMultiplier).toFixed(2);
 }
 
 function draw(){
