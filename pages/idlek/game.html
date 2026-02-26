@@ -1,44 +1,46 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>KrazyPlace — Idle Runes</title>
-  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-    }
-    main { flex: 1; }
-    .hero { padding: 0.5rem; text-align: center; }
-    .logo a { color: lightblue; }
-    .container-narrow {
-      max-width: 900px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    table { width: 100%; text-align: center; }
-    td, th { padding: 0.5rem; }
-    footer {
-      margin-top: 1rem;
-      text-align: center;
-      border-top: 1px solid var(--surface-3);
-      padding-top: 1rem;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>KrazyPlace — Idle Runes</title>
+<link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
+
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+main { flex: 1; }
+.hero { padding: 0.5rem; text-align: center; }
+.logo a { color: lightblue; }
+.container-narrow {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+table { width: 100%; text-align: center; }
+td, th { padding: 0.5rem; }
+footer {
+  margin-top: 1rem;
+  text-align: center;
+  border-top: 1px solid var(--surface-3);
+  padding-top: 1rem;
+}
+progress { width: 100%; }
+</style>
 </head>
 <body>
 
 <header class="container container-narrow">
-  <nav>
-    <ul>
-      <li class="logo"><a href="/krazyplace">KrazyPlace</a></li>
-      <li><a href="#">Idle Runes</a></li>
-    </ul>
-  </nav>
+<nav>
+<ul>
+<li class="logo"><a href="/krazyplace">KrazyPlace</a></li>
+<li><a href="#">Idle Runes</a></li>
+</ul>
+</nav>
 </header>
 
 <main class="container container-narrow">
@@ -48,8 +50,8 @@
 <p>Choisis un point dans le cercle pour optimiser ta génération.</p>
 
 <div style="margin:1rem 0;">
-  <button id="dailyBtn">Partie du jour 🌞</button>
-  <button id="randomBtn">Seed aléatoire 🎲</button>
+<button id="dailyBtn">Partie du jour 🌞</button>
+<button id="randomBtn">Seed aléatoire 🎲</button>
 </div>
 
 <div id="gameArea" style="display:none;">
@@ -65,26 +67,10 @@
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>Nord</td>
-<td id="goalNorth"></td>
-<td id="totalNorth">0</td>
-</tr>
-<tr>
-<td>Sud</td>
-<td id="goalSouth"></td>
-<td id="totalSouth">0</td>
-</tr>
-<tr>
-<td>Est</td>
-<td id="goalEast"></td>
-<td id="totalEast">0</td>
-</tr>
-<tr>
-<td>Ouest</td>
-<td id="goalWest"></td>
-<td id="totalWest">0</td>
-</tr>
+<tr><td>Nord</td><td id="goalNorth"></td><td id="totalNorth">0</td></tr>
+<tr><td>Sud</td><td id="goalSouth"></td><td id="totalSouth">0</td></tr>
+<tr><td>Est</td><td id="goalEast"></td><td id="totalEast">0</td></tr>
+<tr><td>Ouest</td><td id="goalWest"></td><td id="totalWest">0</td></tr>
 </tbody>
 </table>
 
@@ -100,6 +86,20 @@ Est : <span id="eastRate"></span> /s |
 Ouest : <span id="westRate"></span> /s
 </div>
 
+<h3 style="margin-top:1.5rem;">Missions</h3>
+
+<table>
+<thead>
+<tr>
+<th>Mission</th>
+<th>Progression</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="missionsBody">
+</tbody>
+</table>
+
 <div id="endBox" style="display:none;margin-top:1.5rem;">
 <h2>🏁 Objectifs atteints</h2>
 <p>Temps final : <strong id="finalTime"></strong>s</p>
@@ -113,7 +113,7 @@ Ouest : <span id="westRate"></span> /s
 
 <script>
 
-/* RANDOM DÉTERMINISTE */
+/* RNG DÉTERMINISTE */
 function pseudoRandom(seed){
   let s = seed;
   return () => {
@@ -125,6 +125,8 @@ function pseudoRandom(seed){
 let rng;
 let goals = {};
 let totals = { north:0, south:0, east:0, west:0 };
+let missions = [];
+let globalMultiplier = 1;
 
 let startTime;
 let running = false;
@@ -138,14 +140,24 @@ const ctx = canvas.getContext("2d");
 const radius = canvas.width / 2;
 const center = { x: radius, y: radius };
 
+const directions = [
+  { name:"Nord", x:0, y:1 },
+  { name:"Nord-Est", x:0.707, y:0.707 },
+  { name:"Est", x:1, y:0 },
+  { name:"Sud-Est", x:0.707, y:-0.707 },
+  { name:"Sud", x:0, y:-1 },
+  { name:"Sud-Ouest", x:-0.707, y:-0.707 },
+  { name:"Ouest", x:-1, y:0 },
+  { name:"Nord-Ouest", x:-0.707, y:0.707 }
+];
+
 /* INITIALISATION */
 
 function startGame(seed){
+
   rng = pseudoRandom(seed);
 
-  // Total entre 1200 et 1600
   const totalGoal = 1200 + Math.floor(rng()*401);
-
   let parts = [rng(), rng(), rng(), rng()];
   let sum = parts.reduce((a,b)=>a+b,0);
 
@@ -155,13 +167,14 @@ function startGame(seed){
   goals.west  = totalGoal - goals.north - goals.south - goals.east;
 
   totals = { north:0, south:0, east:0, west:0 };
+  globalMultiplier = 1;
 
   document.getElementById("goalNorth").textContent = goals.north;
   document.getElementById("goalSouth").textContent = goals.south;
   document.getElementById("goalEast").textContent  = goals.east;
   document.getElementById("goalWest").textContent  = goals.west;
 
-  updateTotals();
+  generateMissions();
 
   document.getElementById("timer").textContent = "0.0";
   document.getElementById("endBox").style.display = "none";
@@ -177,9 +190,101 @@ function startGame(seed){
   draw();
 }
 
+/* MISSIONS */
+
+function generateMissions(){
+
+  missions = [];
+  const body = document.getElementById("missionsBody");
+  body.innerHTML = "";
+
+  let pool = [...directions];
+
+  for(let i=0;i<3;i++){
+
+    const index = Math.floor(rng()*pool.length);
+    const dir = pool.splice(index,1)[0];
+
+    const mission = {
+      direction: dir,
+      progress: 0,
+      completed: false,
+      boosted: false
+    };
+
+    missions.push(mission);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${dir.name}</td>
+      <td>
+        <progress id="mission${i}" value="0" max="100"></progress>
+        <span id="missionLabel${i}">0%</span>
+      </td>
+      <td>
+        <button id="boost${i}" disabled>
+          Activer (50 runes chacune)
+        </button>
+      </td>
+    `;
+    body.appendChild(row);
+
+    document.getElementById("boost"+i).onclick = ()=>tryBoost(i);
+  }
+}
+
+function updateMissions(){
+
+  if(!pointLocked) return;
+
+  missions.forEach((m,i)=>{
+
+    if(m.completed) return;
+
+    const dot = (x*m.direction.x + y*m.direction.y);
+    const factor = Math.max(0, dot);
+
+    m.progress += factor * 0.8;
+
+    if(m.progress >= 100){
+      m.progress = 100;
+      m.completed = true;
+      document.getElementById("boost"+i).disabled = false;
+    }
+
+    document.getElementById("mission"+i).value = m.progress;
+    document.getElementById("missionLabel"+i).textContent =
+      Math.floor(m.progress)+"%";
+  });
+}
+
+function tryBoost(i){
+
+  const m = missions[i];
+  if(m.boosted) return;
+
+  if(
+    totals.north >= 50 &&
+    totals.south >= 50 &&
+    totals.east  >= 50 &&
+    totals.west  >= 50
+  ){
+    totals.north -= 50;
+    totals.south -= 50;
+    totals.east  -= 50;
+    totals.west  -= 50;
+
+    globalMultiplier *= 2;
+
+    m.boosted = true;
+    document.getElementById("boost"+i).disabled = true;
+  }
+}
+
 /* BOUCLE */
 
 function loop(){
+
   if(!running) return;
 
   const now = performance.now();
@@ -194,13 +299,14 @@ function loop(){
     west  = 1 - x;
   }
 
-  totals.north += north/60;
-  totals.south += south/60;
-  totals.east  += east/60;
-  totals.west  += west/60;
+  totals.north += (north*globalMultiplier)/60;
+  totals.south += (south*globalMultiplier)/60;
+  totals.east  += (east*globalMultiplier)/60;
+  totals.west  += (west*globalMultiplier)/60;
 
   updateTotals();
   updateRates(north,south,east,west);
+  updateMissions();
 
   document.getElementById("timer").textContent = elapsed.toFixed(1);
 
@@ -237,7 +343,6 @@ function updateRates(n,s,e,w){
 
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
   ctx.beginPath();
   ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
   ctx.stroke();
@@ -270,22 +375,17 @@ canvas.addEventListener("click",(e)=>{
   const rect = canvas.getBoundingClientRect();
   let mx = e.clientX - rect.left - center.x;
   let my = e.clientY - rect.top - center.y;
-
   my = -my;
 
   let nx = mx/(radius-5);
   let ny = my/(radius-5);
 
   const dist = Math.sqrt(nx*nx+ny*ny);
-  if(dist>1){
-    nx/=dist;
-    ny/=dist;
-  }
+  if(dist>1){ nx/=dist; ny/=dist; }
 
   x=nx;
   y=ny;
   pointLocked=true;
-
   draw();
 });
 
