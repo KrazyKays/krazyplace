@@ -7,6 +7,21 @@
 <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
 
 <style>
+/* Facteur de zoom */
+:root {
+  --page-scale: 0.85; /* ajuste ici (0.9, 0.8, etc.) */
+}
+
+/* On exclut volontairement le header */
+main, footer {
+  transform: scale(var(--page-scale));
+  transform-origin: top center;
+}
+
+/* Compensation de largeur pour éviter les marges vides */
+main, footer {
+  width: calc(100% / var(--page-scale));
+}
 html, body {
   height: 100%;
   margin: 0;
