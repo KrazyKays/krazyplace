@@ -3,61 +3,32 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>KrazyPlace — Idle Runes</title>
-
+<title>KrazyPlace — Idle K</title>
 <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
 
 <style>
-:root {
-  --page-scale: 0.9;
-}
-
 html, body {
   height: 100%;
   margin: 0;
   display: flex;
   flex-direction: column;
 }
-
-main {
-  flex: 1;
-  transform: scale(var(--page-scale));
-  transform-origin: top center;
-  width: calc(100% / var(--page-scale));
-}
-
+main { flex: 1; }
 .hero { padding: 0.5rem; text-align: center; }
-
 .logo a { color: lightblue; }
-
 .container-narrow {
   max-width: 900px;
-  margin: 0 auto;
+  margin-left: auto;
+  margin-right: auto;
 }
-
 table { width: 100%; text-align: center; }
-
 td, th { padding: 0.5rem; }
-
 footer {
   margin-top: 1rem;
   text-align: center;
   border-top: 1px solid var(--surface-3);
   padding-top: 1rem;
 }
-
-.block-margin { margin: 1rem 0; }
-
-.canvas-circle {
-  margin-top: 1rem;
-  border: 1px solid var(--surface-3);
-  border-radius: 50%;
-}
-
-.hidden { display: none; }
-
-.mt-lg { margin-top: 1.5rem; }
-
 progress { width: 100%; }
 </style>
 </head>
@@ -67,7 +38,7 @@ progress { width: 100%; }
 <nav>
 <ul>
 <li class="logo"><a href="/krazyplace">KrazyPlace</a></li>
-<li><a href="#">Idle Runes</a></li>
+<li><a href="#">Idle K</a></li>
 </ul>
 </nav>
 </header>
@@ -78,12 +49,12 @@ progress { width: 100%; }
 <h1>Idle Runes — Daily Speedrun</h1>
 <p>Choisis un point dans le cercle pour optimiser ta génération.</p>
 
-<div class="block-margin">
-<button id="dailyBtn" type="button">Partie du jour 🌞</button>
-<button id="randomBtn" type="button">Seed aléatoire 🎲</button>
+<div style="margin:1rem 0;">
+<button id="dailyBtn">Partie du jour 🌞</button>
+<button id="randomBtn">Seed aléatoire 🎲</button>
 </div>
 
-<div id="gameArea" class="hidden">
+<div id="gameArea" style="display:none;">
 
 <h3>Objectifs quotidiens</h3>
 
@@ -106,17 +77,16 @@ progress { width: 100%; }
 <p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
 
 <canvas id="controlCanvas" width="300" height="300"
-class="canvas-circle"
-aria-label="Contrôle directionnel du générateur de runes"></canvas>
+style="margin-top:1rem;border:1px solid var(--surface-3);border-radius:50%;"></canvas>
 
-<div class="block-margin">
+<div style="margin-top:1rem;">
 Nord : <span id="northRate"></span> /s |
 Sud : <span id="southRate"></span> /s |
 Est : <span id="eastRate"></span> /s |
 Ouest : <span id="westRate"></span> /s
 </div>
 
-<h3 class="mt-lg">Missions</h3>
+<h3 style="margin-top:1.5rem;">Missions</h3>
 
 <table>
 <thead>
@@ -126,10 +96,11 @@ Ouest : <span id="westRate"></span> /s
 <th>Action</th>
 </tr>
 </thead>
-<tbody id="missionsBody"></tbody>
+<tbody id="missionsBody">
+</tbody>
 </table>
 
-<div id="endBox" class="hidden mt-lg">
+<div id="endBox" style="display:none;margin-top:1.5rem;">
 <h2>🏁 Objectifs atteints</h2>
 <p>Temps final : <strong id="finalTime"></strong>s</p>
 <p>Runes gaspillées : <strong id="wastedRunes">0</strong></p>
@@ -142,331 +113,314 @@ Ouest : <span id="westRate"></span> /s
 <footer><p>© KrazyPlace</p></footer>
 
 <script>
-class IdleRunesGame {
 
-  static CONFIG = {
-    BOOST_COST: 50,
-    MISSION_SPEED: 0.1,
-    BASE_GOAL: 1200,
-    GOAL_VARIANCE: 400,
-    LOOP_INTERVAL: 50
+/* RNG DÉTERMINISTE */
+function pseudoRandom(seed){
+  let s = seed;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
   };
+}
 
-  constructor() {
-    this.cacheDOM();
-    this.initState();
-    this.attachEvents();
+let rng;
+let goals = {};
+let totals = { north:0, south:0, east:0, west:0 };
+let missions = [];
+let globalMultiplier = 1;
+
+let startTime;
+let running = false;
+let pointLocked = false;
+
+let x = 0;
+let y = 0;
+
+const canvas = document.getElementById("controlCanvas");
+const ctx = canvas.getContext("2d");
+const radius = canvas.width / 2;
+const center = { x: radius, y: radius };
+
+const directions = [
+  { name:"Nord", x:0, y:1 },
+  { name:"Nord-Est", x:0.707, y:0.707 },
+  { name:"Est", x:1, y:0 },
+  { name:"Sud-Est", x:0.707, y:-0.707 },
+  { name:"Sud", x:0, y:-1 },
+  { name:"Sud-Ouest", x:-0.707, y:-0.707 },
+  { name:"Ouest", x:-1, y:0 },
+  { name:"Nord-Ouest", x:-0.707, y:0.707 }
+];
+
+/* INITIALISATION */
+
+function startGame(seed){
+
+  rng = pseudoRandom(seed);
+
+  const totalGoal = 1200 + Math.floor(rng()*401);
+  let parts = [rng(), rng(), rng(), rng()];
+  let sum = parts.reduce((a,b)=>a+b,0);
+
+  goals.north = Math.floor((parts[0]/sum)*totalGoal);
+  goals.south = Math.floor((parts[1]/sum)*totalGoal);
+  goals.east  = Math.floor((parts[2]/sum)*totalGoal);
+  goals.west  = totalGoal - goals.north - goals.south - goals.east;
+
+  totals = { north:0, south:0, east:0, west:0 };
+  globalMultiplier = 1;
+
+  document.getElementById("goalNorth").textContent = goals.north;
+  document.getElementById("goalSouth").textContent = goals.south;
+  document.getElementById("goalEast").textContent  = goals.east;
+  document.getElementById("goalWest").textContent  = goals.west;
+
+  generateMissions();
+
+  document.getElementById("timer").textContent = "0.0";
+  document.getElementById("endBox").style.display = "none";
+  document.getElementById("gameArea").style.display = "block";
+
+  x = 0; y = 0;
+  pointLocked = true;
+
+  startTime = performance.now();
+  running = true;
+
+  // Nouvelle boucle qui fonctionne même en arrière-plan
+  lastUpdate = performance.now();
+  if(!window.gameInterval) {
+    window.gameInterval = setInterval(gameLoop, 50); // toutes les 50ms
   }
+}
 
-  cacheDOM() {
-    this.DOM = {
-      dailyBtn: document.getElementById("dailyBtn"),
-      randomBtn: document.getElementById("randomBtn"),
-      gameArea: document.getElementById("gameArea"),
-      missionsBody: document.getElementById("missionsBody"),
-      timer: document.getElementById("timer"),
-      endBox: document.getElementById("endBox"),
-      finalTime: document.getElementById("finalTime"),
-      wastedRunes: document.getElementById("wastedRunes"),
+/* MISSIONS */
 
-      goals: {
-        north: document.getElementById("goalNorth"),
-        south: document.getElementById("goalSouth"),
-        east: document.getElementById("goalEast"),
-        west: document.getElementById("goalWest"),
-      },
+function generateMissions(){
 
-      totals: {
-        north: document.getElementById("totalNorth"),
-        south: document.getElementById("totalSouth"),
-        east: document.getElementById("totalEast"),
-        west: document.getElementById("totalWest"),
-      },
+  missions = [];
+  const body = document.getElementById("missionsBody");
+  body.innerHTML = "";
 
-      rates: {
-        north: document.getElementById("northRate"),
-        south: document.getElementById("southRate"),
-        east: document.getElementById("eastRate"),
-        west: document.getElementById("westRate"),
-      },
+  let pool = [...directions];
 
-      canvas: document.getElementById("controlCanvas")
+  for(let i=0;i<3;i++){
+
+    const index = Math.floor(rng()*pool.length);
+    const dir = pool.splice(index,1)[0];
+
+    const mission = {
+      direction: dir,
+      progress: 0,
+      completed: false,
+      boosted: false
     };
 
-    this.ctx = this.DOM.canvas.getContext("2d");
-    this.radius = this.DOM.canvas.width / 2;
-    this.center = { x: this.radius, y: this.radius };
+    missions.push(mission);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${dir.name}</td>
+      <td>
+        <progress id="mission${i}" value="0" max="100"></progress>
+        <span id="missionLabel${i}">0%</span>
+      </td>
+      <td>
+        <button id="boost${i}" disabled>
+          Activer (50 runes chacune)
+        </button>
+      </td>
+    `;
+    body.appendChild(row);
+
+    document.getElementById("boost"+i).onclick = ()=>tryBoost(i);
   }
+}
 
-  initState() {
-    this.rng = null;
-    this.goals = {};
-    this.totals = { north:0, south:0, east:0, west:0 };
-    this.missions = [];
-    this.globalMultiplier = 1;
-    this.running = false;
-    this.startTime = 0;
-    this.lastUpdate = 0;
-    this.intervalId = null;
-    this.x = 0;
-    this.y = 0;
-  }
+function updateMissions(){
 
-  pseudoRandom(seed){
-    let s = seed;
-    return () => {
-      s = (s * 16807) % 2147483647;
-      return (s - 1) / 2147483646;
-    };
-  }
+  if(!pointLocked) return;
 
-  start(seed) {
-    this.rng = this.pseudoRandom(seed);
-    this.generateGoals();
-    this.generateMissions();
+  missions.forEach((m,i)=>{
 
-    this.DOM.gameArea.classList.remove("hidden");
-    this.DOM.endBox.classList.add("hidden");
+    if(m.completed) return;
 
-    this.startTime = performance.now();
-    this.lastUpdate = performance.now();
-    this.running = true;
+    const dot = (x*m.direction.x + y*m.direction.y);
+    const factor = Math.max(0, dot);
 
-    if (!this.intervalId) {
-      this.intervalId = setInterval(
-        () => this.gameLoop(),
-        IdleRunesGame.CONFIG.LOOP_INTERVAL
-      );
-    }
-  }
+    m.progress += factor * 0.1;
 
-  generateGoals() {
-    const totalGoal =
-      IdleRunesGame.CONFIG.BASE_GOAL +
-      Math.floor(this.rng() * IdleRunesGame.CONFIG.GOAL_VARIANCE);
-
-    const parts = [this.rng(), this.rng(), this.rng(), this.rng()];
-    const sum = parts.reduce((a,b)=>a+b,0);
-
-    this.goals.north = Math.floor((parts[0]/sum)*totalGoal);
-    this.goals.south = Math.floor((parts[1]/sum)*totalGoal);
-    this.goals.east  = Math.floor((parts[2]/sum)*totalGoal);
-    this.goals.west  = totalGoal - this.goals.north - this.goals.south - this.goals.east;
-
-    Object.keys(this.goals).forEach(axis=>{
-      this.DOM.goals[axis].textContent = this.goals[axis];
-      this.totals[axis] = 0;
-    });
-  }
-
-  generateMissions() {
-    this.missions = [];
-    this.DOM.missionsBody.innerHTML = "";
-
-    const directions = [
-      { name:"Nord", x:0, y:1 },
-      { name:"Est", x:1, y:0 },
-      { name:"Sud", x:0, y:-1 },
-      { name:"Ouest", x:-1, y:0 }
-    ];
-
-    for(let i=0;i<3;i++){
-      const dir = directions.splice(
-        Math.floor(this.rng()*directions.length),1
-      )[0];
-
-      const row = document.createElement("tr");
-
-      const progress = document.createElement("progress");
-      progress.max = 100;
-      progress.value = 0;
-
-      const label = document.createElement("span");
-      label.textContent = "0%";
-
-      const button = document.createElement("button");
-      button.textContent = `Activer (${IdleRunesGame.CONFIG.BOOST_COST} runes chacune)`;
-      button.disabled = true;
-      button.type = "button";
-
-      const mission = {
-        direction: dir,
-        progress: 0,
-        completed: false,
-        boosted: false,
-        elements: { progress, label, button }
-      };
-
-      button.onclick = () => this.tryBoost(mission);
-
-      row.innerHTML = `<td>${dir.name}</td>`;
-      const tdProgress = document.createElement("td");
-      tdProgress.append(progress, label);
-
-      const tdAction = document.createElement("td");
-      tdAction.appendChild(button);
-
-      row.append(tdProgress, tdAction);
-      this.DOM.missionsBody.appendChild(row);
-
-      this.missions.push(mission);
-    }
-  }
-
-  tryBoost(mission) {
-    if (mission.boosted) return;
-
-    const cost = IdleRunesGame.CONFIG.BOOST_COST;
-
-    if (Object.values(this.totals).every(v=>v>=cost)) {
-      Object.keys(this.totals).forEach(a=>this.totals[a]-=cost);
-      this.globalMultiplier *= 2;
-      mission.boosted = true;
-      mission.elements.button.disabled = true;
-    }
-  }
-
-  updateTotals() {
-    Object.keys(this.totals).forEach(axis=>{
-      this.DOM.totals[axis].textContent =
-        Math.floor(this.totals[axis]);
-    });
-  }
-
-  updateRates(n,s,e,w) {
-    const values = {north:n, south:s, east:e, west:w};
-    Object.keys(values).forEach(axis=>{
-      this.DOM.rates[axis].textContent =
-        (values[axis]*this.globalMultiplier).toFixed(2);
-    });
-  }
-
-  updateMissions() {
-    this.missions.forEach(m=>{
-      if (m.completed) return;
-
-      const dot = this.x*m.direction.x + this.y*m.direction.y;
-      const factor = Math.max(0,dot);
-
-      m.progress += factor * IdleRunesGame.CONFIG.MISSION_SPEED;
-
-      if (m.progress >= 100) {
-        m.progress = 100;
-        m.completed = true;
-        m.elements.button.disabled = false;
-      }
-
-      m.elements.progress.value = m.progress;
-      m.elements.label.textContent =
-        Math.floor(m.progress)+"%";
-    });
-  }
-
-  gameLoop() {
-    if (!this.running) return;
-
-    const now = performance.now();
-    const delta = (now - this.lastUpdate)/1000;
-    this.lastUpdate = now;
-
-    const north = 1 + this.y;
-    const south = 1 - this.y;
-    const east  = 1 + this.x;
-    const west  = 1 - this.x;
-
-    this.totals.north += north*this.globalMultiplier*delta;
-    this.totals.south += south*this.globalMultiplier*delta;
-    this.totals.east  += east *this.globalMultiplier*delta;
-    this.totals.west  += west *this.globalMultiplier*delta;
-
-    this.updateTotals();
-    this.updateRates(north,south,east,west);
-    this.updateMissions();
-
-    const elapsed = (now - this.startTime)/1000;
-    this.DOM.timer.textContent = elapsed.toFixed(1);
-
-    if (Object.keys(this.goals)
-      .every(a=>this.totals[a]>=this.goals[a])) {
-
-      this.running = false;
-      this.DOM.finalTime.textContent =
-        elapsed.toFixed(2);
-
-      const wasted = Object.keys(this.goals)
-        .reduce((sum,a)=>
-          sum + Math.max(0,this.totals[a]-this.goals[a]),0);
-
-      this.DOM.wastedRunes.textContent =
-        Math.floor(wasted);
-
-      this.DOM.endBox.classList.remove("hidden");
-
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if(m.progress >= 100){
+      m.progress = 100;
+      m.completed = true;
+      document.getElementById("boost"+i).disabled = false;
     }
 
-    this.draw();
+    document.getElementById("mission"+i).value = m.progress;
+    document.getElementById("missionLabel"+i).textContent =
+      Math.floor(m.progress)+"%";
+  });
+}
+
+function tryBoost(i){
+
+  const m = missions[i];
+  if(m.boosted) return;
+
+  if(
+    totals.north >= 50 &&
+    totals.south >= 50 &&
+    totals.east  >= 50 &&
+    totals.west  >= 50
+  ){
+    totals.north -= 50;
+    totals.south -= 50;
+    totals.east  -= 50;
+    totals.west  -= 50;
+
+    globalMultiplier *= 2;
+
+    m.boosted = true;
+    document.getElementById("boost"+i).disabled = true;
+  }
+}
+
+/* BOUCLE MODIFIÉE */
+
+let lastUpdate = 0;
+
+function gameLoop(){
+  if(!running) return;
+
+  const now = performance.now();
+  const delta = (now - lastUpdate)/1000; // delta en secondes
+  lastUpdate = now;
+
+  let north=1, south=1, east=1, west=1;
+
+  if(pointLocked){
+    north = 1 + y;
+    south = 1 - y;
+    east  = 1 + x;
+    west  = 1 - x;
   }
 
-  draw() {
-    const ctx = this.ctx;
-    ctx.clearRect(0,0,300,300);
+  totals.north += (north*globalMultiplier)*delta;
+  totals.south += (south*globalMultiplier)*delta;
+  totals.east  += (east*globalMultiplier)*delta;
+  totals.west  += (west*globalMultiplier)*delta;
 
-    ctx.beginPath();
-    ctx.arc(this.center.x,this.center.y,
-            this.radius-5,0,Math.PI*2);
-    ctx.stroke();
+  updateTotals();
+  updateRates(north,south,east,west);
+  updateMissions();
 
-    const px = this.center.x + this.x*(this.radius-5);
-    const py = this.center.y - this.y*(this.radius-5);
+  const elapsed = (now - startTime)/1000;
+  document.getElementById("timer").textContent = elapsed.toFixed(1);
 
+  if(
+    totals.north >= goals.north &&
+    totals.south >= goals.south &&
+    totals.east  >= goals.east  &&
+    totals.west  >= goals.west
+  ){
+    running = false;
+    document.getElementById("finalTime").textContent = elapsed.toFixed(2);
+
+    // Calcul des runes gaspillées
+    const wasted = 
+      Math.max(0, totals.north - goals.north) +
+      Math.max(0, totals.south - goals.south) +
+      Math.max(0, totals.east  - goals.east)  +
+      Math.max(0, totals.west  - goals.west);
+
+    document.getElementById("wastedRunes").textContent = Math.floor(wasted);
+    
+    document.getElementById("endBox").style.display = "block";
+    clearInterval(window.gameInterval);
+    window.gameInterval = null;
+    return;
+  }
+
+  draw();
+}
+
+/* UI */
+
+function updateTotals(){
+  document.getElementById("totalNorth").textContent = Math.floor(totals.north);
+  document.getElementById("totalSouth").textContent = Math.floor(totals.south);
+  document.getElementById("totalEast").textContent  = Math.floor(totals.east);
+  document.getElementById("totalWest").textContent  = Math.floor(totals.west);
+}
+
+function updateRates(n,s,e,w){
+  document.getElementById("northRate").textContent = (n*globalMultiplier).toFixed(2);
+  document.getElementById("southRate").textContent = (s*globalMultiplier).toFixed(2);
+  document.getElementById("eastRate").textContent  = (e*globalMultiplier).toFixed(2);
+  document.getElementById("westRate").textContent  = (w*globalMultiplier).toFixed(2);
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.beginPath();
+  ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0,center.y);
+  ctx.lineTo(canvas.width,center.y);
+  ctx.moveTo(center.x,0);
+  ctx.lineTo(center.x,canvas.height);
+  ctx.strokeStyle="#888";
+  ctx.stroke();
+
+  if(pointLocked){
+    const px = center.x + x*(radius-5);
+    const py = center.y - y*(radius-5);
     ctx.beginPath();
     ctx.arc(px,py,6,0,Math.PI*2);
     ctx.fillStyle="red";
     ctx.fill();
   }
 
-  attachEvents() {
-    this.DOM.dailyBtn.onclick = () => {
-      const today = new Date()
-        .toISOString().split("T")[0];
-      const seed = [...today]
-        .reduce((a,c)=>a+c.charCodeAt(0),0);
-      this.start(seed);
-    };
-
-    this.DOM.randomBtn.onclick = () => {
-      const seed =
-        Math.floor(Math.random()*2147483647);
-      this.start(seed);
-    };
-
-    this.DOM.canvas.addEventListener("click",(e)=>{
-      if (!this.running) return;
-
-      const rect =
-        this.DOM.canvas.getBoundingClientRect();
-
-      let mx = e.clientX - rect.left - this.center.x;
-      let my = e.clientY - rect.top - this.center.y;
-
-      my = -my;
-
-      let nx = mx/(this.radius-5);
-      let ny = my/(this.radius-5);
-
-      const dist = Math.hypot(nx,ny);
-      if (dist>1){ nx/=dist; ny/=dist; }
-
-      this.x = nx;
-      this.y = ny;
-    });
-  }
+  ctx.strokeStyle="black";
 }
 
-new IdleRunesGame();
-</script>
+/* INPUT */
 
+canvas.addEventListener("click",(e)=>{
+  if(!running) return;
+
+  const rect = canvas.getBoundingClientRect();
+  let mx = e.clientX - rect.left - center.x;
+  let my = e.clientY - rect.top - center.y;
+  my = -my;
+
+  let nx = mx/(radius-5);
+  let ny = my/(radius-5);
+
+  const dist = Math.sqrt(nx*nx+ny*ny);
+  if(dist>1){ nx/=dist; ny/=dist; }
+
+  x=nx;
+  y=ny;
+  pointLocked=true;
+  draw();
+});
+
+/* BOUTONS */
+
+document.getElementById("dailyBtn").onclick=()=>{
+  const today = new Date().toISOString().split("T")[0];
+  const seed = today.split("").reduce((a,c)=>a+c.charCodeAt(0),0);
+  startGame(seed);
+};
+
+document.getElementById("randomBtn").onclick=()=>{
+  const seed = Math.floor(Math.random()*2147483647);
+  startGame(seed);
+};
+
+</script>
 </body>
 </html>
