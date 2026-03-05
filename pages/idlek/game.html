@@ -9,17 +9,13 @@
 <style>
 /* Facteur de zoom */
 :root {
-  --page-scale: 0.75; /* ajuste ici (0.9, 0.8, etc.) */
+  --page-scale: 0.75;
 }
-
-/* On exclut volontairement le header */
-main, footer {
+main {
   transform: scale(var(--page-scale));
   transform-origin: top center;
 }
-
-/* Compensation de largeur pour éviter les marges vides */
-main, footer {
+main {
   width: calc(100% / var(--page-scale));
 }
 html, body {
