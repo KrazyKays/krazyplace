@@ -103,7 +103,7 @@ footer{
 <script>
 
 const container = document.getElementById("galleryContainer")
-fetch("images.json").then(res => res.json()).then(files => {
+fetch("images.json",{cache: "no-cache"}).then(res => res.json()).then(files => {
     const categories = groupImagesByCategory(files)
     renderCategories(categories)
     initLazy()
