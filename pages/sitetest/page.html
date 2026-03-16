@@ -1,242 +1,183 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Artisan Peintre</title>
-
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
-
 body{
-font-family:Inter,sans-serif;
-margin:0;
-background:#f6f7f9;
-color:#222;
+  font-family: Inter, sans-serif;
+  margin:0;
+  background:#f6f7f9;
+  color:#222;
 }
-
 header{
-background:#111;
-color:white;
-padding:20px;
+  background:#111;
+  color:white;
+  padding:20px;
 }
-
 nav{
-max-width:1200px;
-margin:auto;
-display:flex;
-justify-content:space-between;
+  max-width:1200px;
+  margin:auto;
+  display:flex;
+  justify-content:space-between;
 }
-
 .hero{
-padding:90px 20px;
-text-align:center;
-background:linear-gradient(120deg,#2c2c2c,#444);
-color:white;
+  padding:90px 20px;
+  text-align:center;
+  background:linear-gradient(120deg,#2c2c2c,#444);
+  color:white;
 }
-
 .container{
-max-width:1200px;
-margin:auto;
-padding:60px 20px;
+  max-width:1200px;
+  margin:auto;
+  padding:60px 20px;
 }
-
 .category{
-margin-bottom:60px;
+  margin-bottom:60px;
 }
-
 .gallery{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-gap:15px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:15px;
 }
-
 .gallery img{
-width:100%;
-height:220px;
-object-fit:cover;
-border-radius:8px;
-cursor:pointer;
-transition:transform .2s;
+  width:100%;
+  height:220px;
+  object-fit:cover;
+  border-radius:8px;
+  cursor:pointer;
+  transition:transform .2s;
 }
-
 .gallery img:hover{
-transform:scale(1.03);
+  transform:scale(1.03);
 }
-
 footer{
-background:#111;
-color:white;
-text-align:center;
-padding:30px;
+  background:#111;
+  color:white;
+  text-align:center;
+  padding:30px;
 }
-
 .lightbox{
-position:fixed;
-inset:0;
-background:rgba(0,0,0,0.9);
-display:none;
-align-items:center;
-justify-content:center;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.9);
+  display:none;
+  align-items:center;
+  justify-content:center;
 }
-
 .lightbox img{
-max-width:90%;
-max-height:90%;
+  max-width:90%;
+  max-height:90%;
 }
-
 </style>
-
 </head>
 
 <body>
-
 <header>
-
-<nav>
-<div><strong>Peinture Dupont</strong></div>
-</nav>
-
+  <nav>
+    <div><strong>Peinture Dupont</strong></div>
+  </nav>
 </header>
 
 <section class="hero">
-
-<h1>Artisan Peintre</h1>
-<p>Peinture intérieure • extérieure • rénovation</p>
-
+  <h1>Artisan Peintre</h1>
+  <p>Peinture intérieure • extérieure • rénovation</p>
 </section>
 
 <section class="container">
-
-<h2>Réalisations</h2>
-
-<div id="galleryContainer"></div>
-
+  <h2>Réalisations</h2>
+  <div id="galleryContainer"></div>
 </section>
 
 <footer>
-
-© 2026 Artisan Peintre
-
+  © 2026 Artisan Peintre
 </footer>
 
 <div class="lightbox" id="lightbox">
-<img src="">
+  <img src="">
 </div>
 
 <script>
 
 const container = document.getElementById("galleryContainer")
+fetch("images.json").then(res => res.json()).then(files => {
+    const categories = groupImagesByCategory(files)
+    renderCategories(categories)
+    initLazy()
+    initLightbox()
+  })
 
-fetch("images.json")
-.then(res => res.json())
-.then(files => {
+function groupImagesByCategory(files){
+  const categories = {}
+  files.forEach(file => {
+    const match = file.match(/^([a-zA-Z_-]+)(\d+)\./)
+    if(!match) return
+    const category = match[1]
+    const number = parseInt(match[2])
+    if(!categories[category])
+      categories[category] = []
+    categories[category].push({
+      file:file,
+      number:number
+    })
+  })
+  return categories
+}
 
-const categories = {}
+function renderCategories(categories){
+  Object.keys(categories).sort().forEach(cat => {
+      categories[cat].sort((a,b)=>a.number-b.number)
+      const section = document.createElement("div")
+      section.className = "category"
+      const title = document.createElement("h3")
+      title.textContent = cat.charAt(0).toUpperCase() + cat.slice(1)
+      const gallery = document.createElement("div")
+      gallery.className = "gallery"
 
-files.forEach(file => {
+      categories[cat].forEach(img => {
+        const image = document.createElement("img")
+        image.dataset.src = "images/" + img.file
+        image.loading = "lazy"
+        gallery.appendChild(image)
+      })
 
-const match = file.match(/^([a-zA-Z_-]+)(\d+)\./)
+      section.appendChild(title)
+      section.appendChild(gallery)
 
-if(!match) return
-
-const category = match[1]
-const number = parseInt(match[2])
-
-if(!categories[category])
-categories[category] = []
-
-categories[category].push({
-file:file,
-number:number
-})
-
-})
-
-Object.keys(categories).sort().forEach(cat => {
-
-categories[cat].sort((a,b)=>a.number-b.number)
-
-const section = document.createElement("div")
-section.className="category"
-
-const title = document.createElement("h3")
-title.textContent = cat.charAt(0).toUpperCase()+cat.slice(1)
-
-const gallery = document.createElement("div")
-gallery.className="gallery"
-
-categories[cat].forEach(img => {
-
-const image = document.createElement("img")
-
-image.dataset.src = "images/"+img.file
-image.loading="lazy"
-
-gallery.appendChild(image)
-
-})
-
-section.appendChild(title)
-section.appendChild(gallery)
-
-container.appendChild(section)
-
-})
-
-initLazy()
-initLightbox()
-
-})
+      container.appendChild(section)
+    })
+}
 
 function initLazy(){
-
-const imgs=document.querySelectorAll("img[data-src]")
-
-const observer=new IntersectionObserver(entries=>{
-entries.forEach(entry=>{
-if(entry.isIntersecting){
-
-const img=entry.target
-img.src=img.dataset.src
-
-observer.unobserve(img)
-
-}
-})
-})
-
-imgs.forEach(img=>observer.observe(img))
-
+  const imgs = document.querySelectorAll("img[data-src]")
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        const img = entry.target
+        img.src = img.dataset.src
+        observer.unobserve(img)
+      }
+    })
+  })
+  imgs.forEach(img => observer.observe(img))
 }
 
 function initLightbox(){
-
-const lightbox=document.getElementById("lightbox")
-const lightImg=lightbox.querySelector("img")
-
-document.addEventListener("click",e=>{
-
-if(e.target.tagName==="IMG" && e.target.src){
-
-lightbox.style.display="flex"
-lightImg.src=e.target.src
-
+  const lightbox = document.getElementById("lightbox")
+  const lightImg = lightbox.querySelector("img")
+  document.addEventListener("click", e => {
+    if(e.target.tagName === "IMG" && e.target.src){
+      lightbox.style.display = "flex"
+      lightImg.src = e.target.src
+    }
+  })
+  lightbox.addEventListener("click", () => {
+    lightbox.style.display = "none"
+  })
 }
-
-})
-
-lightbox.addEventListener("click",()=>{
-lightbox.style.display="none"
-})
-
-}
-
 </script>
-
 </body>
 </html>
