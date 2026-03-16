@@ -1,144 +1,240 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Artisan Peintre - Site Vitrine</title>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Artisan Peintre</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Inter, sans-serif;background:#f6f7f9;color:#222;line-height:1.6}
-header{background:#111;color:white;padding:20px}
-nav{display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:auto}
-nav ul{display:flex;list-style:none;gap:20px}
-nav a{color:white;text-decoration:none;font-weight:500}
-.hero{padding:100px 20px;text-align:center;background:linear-gradient(120deg,#2b2b2b,#4a4a4a);color:white}
-.container{max-width:1200px;margin:auto;padding:60px 20px}
-section h2{margin-bottom:30px;font-size:28px}
-.services{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
-.card{background:white;padding:20px;border-radius:10px;box-shadow:0 10px 20px rgba(0,0,0,0.05)}
-.gallery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}
-.gallery-grid img{width:100%;height:220px;object-fit:cover;border-radius:8px;cursor:pointer;transition:transform .2s}
-.gallery-grid img:hover{transform:scale(1.03)}
-.category{margin-bottom:50px}
-footer{background:#111;color:white;text-align:center;padding:30px;margin-top:60px}
-.contact-form{display:grid;gap:15px;max-width:600px}
-input,textarea{padding:12px;border:1px solid #ccc;border-radius:6px;width:100%}
-button{padding:12px;background:#111;color:white;border:none;border-radius:6px;cursor:pointer}
-.lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center}
-.lightbox img{max-width:90%;max-height:90%}
+
+body{
+font-family:Inter,sans-serif;
+margin:0;
+background:#f6f7f9;
+color:#222;
+}
+
+header{
+background:#111;
+color:white;
+padding:20px;
+}
+
+nav{
+max-width:1200px;
+margin:auto;
+display:flex;
+justify-content:space-between;
+}
+
+.hero{
+padding:90px 20px;
+text-align:center;
+background:linear-gradient(120deg,#2c2c2c,#444);
+color:white;
+}
+
+.container{
+max-width:1200px;
+margin:auto;
+padding:60px 20px;
+}
+
+.category{
+margin-bottom:60px;
+}
+
+.gallery{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:15px;
+}
+
+.gallery img{
+width:100%;
+height:220px;
+object-fit:cover;
+border-radius:8px;
+cursor:pointer;
+transition:transform .2s;
+}
+
+.gallery img:hover{
+transform:scale(1.03);
+}
+
+footer{
+background:#111;
+color:white;
+text-align:center;
+padding:30px;
+}
+
+.lightbox{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.9);
+display:none;
+align-items:center;
+justify-content:center;
+}
+
+.lightbox img{
+max-width:90%;
+max-height:90%;
+}
+
 </style>
+
 </head>
+
 <body>
 
 <header>
+
 <nav>
 <div><strong>Peinture Dupont</strong></div>
-<ul>
-<li><a href="#accueil">Accueil</a></li>
-<li><a href="#services">Services</a></li>
-<li><a href="#realisations">Réalisations</a></li>
-<li><a href="#contact">Contact</a></li>
-</ul>
 </nav>
+
 </header>
 
-<section class="hero" id="accueil">
-<h1>Artisan Peintre Professionnel</h1>
-<p>Peinture intérieure, extérieure et rénovation</p>
+<section class="hero">
+
+<h1>Artisan Peintre</h1>
+<p>Peinture intérieure • extérieure • rénovation</p>
+
 </section>
 
-<section class="container" id="services">
-<h2>Services</h2>
-<div class="services">
-<div class="card">Peinture intérieure</div>
-<div class="card">Ravalement de façade</div>
-<div class="card">Pose de revêtements muraux</div>
-<div class="card">Rénovation appartement</div>
-</div>
-</section>
+<section class="container">
 
-<section class="container" id="realisations">
 <h2>Réalisations</h2>
 
-<div class="category">
-<h3>Maisons</h3>
-<div class="gallery-grid">
-<img data-src="images/maison1.jpg" alt="chantier maison" class="lazy">
-<img data-src="images/maison1.jpg" alt="chantier maison" class="lazy">
-<img data-src="images/maison1.jpg" alt="chantier maison" class="lazy">
-</div>
-</div>
+<div id="galleryContainer"></div>
 
-<div class="category">
-<h3>Appartements</h3>
-<div class="gallery-grid">
-<img data-src="images/maison1.jpg" alt="chantier appartement" class="lazy">
-<img data-src="images/maison1.jpg" alt="chantier appartement" class="lazy">
-<img data-src="images/maison1.jpg" alt="chantier appartement" class="lazy">
-</div>
-</div>
-
-<div class="category">
-<h3>Façades</h3>
-<div class="gallery-grid">
-<img data-src="images/maison1.jpg" alt="chantier facade" class="lazy">
-<img data-src="images/maison1.jpg" alt="chantier facade" class="lazy">
-<img data-src="images/maison1.jpg" alt="chantier facade" class="lazy">
-</div>
-</div>
-
-</section>
-
-<section class="container" id="contact">
-<h2>Contact</h2>
-<form class="contact-form">
-<input type="text" placeholder="Nom" required>
-<input type="email" placeholder="Email" required>
-<textarea rows="5" placeholder="Votre message"></textarea>
-<button type="submit">Envoyer</button>
-</form>
 </section>
 
 <footer>
-<p>© 2026 Peinture Dupont - Artisan Peintre</p>
+
+© 2026 Artisan Peintre
+
 </footer>
 
 <div class="lightbox" id="lightbox">
-<img src="" alt="">
+<img src="">
 </div>
 
 <script>
 
-const lazyImages = document.querySelectorAll("img.lazy");
+const container = document.getElementById("galleryContainer")
 
-const observer = new IntersectionObserver((entries, observer) => {
- entries.forEach(entry => {
-   if(entry.isIntersecting){
-     const img = entry.target;
-     img.src = img.dataset.src;
-     img.classList.remove("lazy");
-     observer.unobserve(img);
-   }
- });
-});
+fetch("images.json")
+.then(res => res.json())
+.then(files => {
 
-lazyImages.forEach(img => observer.observe(img));
+const categories = {}
 
-const lightbox = document.getElementById("lightbox");
-const lightboxImg = lightbox.querySelector("img");
+files.forEach(file => {
 
+const match = file.match(/^([a-zA-Z_-]+)(\d+)\./)
 
-document.querySelectorAll(".gallery-grid img").forEach(img => {
- img.addEventListener("click", () => {
-   lightbox.style.display = "flex";
-   lightboxImg.src = img.src;
- });
-});
+if(!match) return
 
-lightbox.addEventListener("click", () => {
- lightbox.style.display = "none";
-});
+const category = match[1]
+const number = parseInt(match[2])
+
+if(!categories[category])
+categories[category] = []
+
+categories[category].push({
+file:file,
+number:number
+})
+
+})
+
+Object.keys(categories).sort().forEach(cat => {
+
+categories[cat].sort((a,b)=>a.number-b.number)
+
+const section = document.createElement("div")
+section.className="category"
+
+const title = document.createElement("h3")
+title.textContent = cat.charAt(0).toUpperCase()+cat.slice(1)
+
+const gallery = document.createElement("div")
+gallery.className="gallery"
+
+categories[cat].forEach(img => {
+
+const image = document.createElement("img")
+
+image.dataset.src = "images/"+img.file
+image.loading="lazy"
+
+gallery.appendChild(image)
+
+})
+
+section.appendChild(title)
+section.appendChild(gallery)
+
+container.appendChild(section)
+
+})
+
+initLazy()
+initLightbox()
+
+})
+
+function initLazy(){
+
+const imgs=document.querySelectorAll("img[data-src]")
+
+const observer=new IntersectionObserver(entries=>{
+entries.forEach(entry=>{
+if(entry.isIntersecting){
+
+const img=entry.target
+img.src=img.dataset.src
+
+observer.unobserve(img)
+
+}
+})
+})
+
+imgs.forEach(img=>observer.observe(img))
+
+}
+
+function initLightbox(){
+
+const lightbox=document.getElementById("lightbox")
+const lightImg=lightbox.querySelector("img")
+
+document.addEventListener("click",e=>{
+
+if(e.target.tagName==="IMG" && e.target.src){
+
+lightbox.style.display="flex"
+lightImg.src=e.target.src
+
+}
+
+})
+
+lightbox.addEventListener("click",()=>{
+lightbox.style.display="none"
+})
+
+}
 
 </script>
 
