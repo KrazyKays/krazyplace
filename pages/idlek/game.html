@@ -13,7 +13,7 @@ html, body {
   display: flex;
   flex-direction: column;
 }
-main {flex: 1; }
+main {flex: 1;}
 #gameArea {
   font-size: 0.9rem;
   line-height: 1;
@@ -51,7 +51,7 @@ progress { width: 100%; }
 <section class="hero">
 
 <h1>Idle K</h1>
-<p>Atteins l'objectf le plus vite et avec le moins de gaspillage possible.</p>
+<p>Atteins l'objectif le plus vite et avec le moins de gaspillage possible.</p>
 
 <div style="margin:1rem 0;">
 <button id="dailyBtn">Partie du jour 🌞</button>
@@ -80,6 +80,9 @@ progress { width: 100%; }
 
 <p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
 
+<!-- CONTROLS -->
+<div id="controlsSection">
+
 <canvas id="controlCanvas" width="300" height="300"
 style="margin-top:1rem;border:1px solid var(--surface-3);border-radius:50%;"></canvas>
 
@@ -89,6 +92,11 @@ Sud : <span id="southRate"></span> /s |
 Est : <span id="eastRate"></span> /s |
 Ouest : <span id="westRate"></span> /s
 </div>
+
+</div>
+
+<!-- MISSIONS -->
+<div id="missionsSection">
 
 <h3 style="margin-top:1.5rem;">Missions</h3>
 
@@ -104,6 +112,9 @@ Ouest : <span id="westRate"></span> /s
 </tbody>
 </table>
 
+</div>
+
+<!-- END -->
 <div id="endBox" style="display:none;margin-top:1.5rem;">
 <h2>🏁 Objectifs atteints</h2>
 <p>Temps final : <strong id="finalTime"></strong>s</p>
@@ -117,8 +128,6 @@ Ouest : <span id="westRate"></span> /s
 <footer><p>© KrazyPlace</p></footer>
 
 <script>
-
-/* RNG DÉTERMINISTE */
 function pseudoRandom(seed){
   let s = seed;
   return () => {
@@ -156,10 +165,7 @@ const directions = [
   { name:"Nord-Ouest", x:-0.707, y:0.707 }
 ];
 
-/* INITIALISATION */
-
 function startGame(seed){
-
   rng = pseudoRandom(seed);
 
   const totalGoal = 1200 + Math.floor(rng()*401);
@@ -183,6 +189,10 @@ function startGame(seed){
 
   document.getElementById("timer").textContent = "0.0";
   document.getElementById("endBox").style.display = "none";
+
+  document.getElementById("controlsSection").style.display = "block";
+  document.getElementById("missionsSection").style.display = "block";
+
   document.getElementById("gameArea").style.display = "block";
 
   x = 0; y = 0;
@@ -191,17 +201,13 @@ function startGame(seed){
   startTime = performance.now();
   running = true;
 
-  // Nouvelle boucle qui fonctionne même en arrière-plan
   lastUpdate = performance.now();
   if(!window.gameInterval) {
-    window.gameInterval = setInterval(gameLoop, 50); // toutes les 50ms
+    window.gameInterval = setInterval(gameLoop, 50);
   }
 }
 
-/* MISSIONS */
-
 function generateMissions(){
-
   missions = [];
   const body = document.getElementById("missionsBody");
   body.innerHTML = "";
@@ -209,7 +215,6 @@ function generateMissions(){
   let pool = [...directions];
 
   for(let i=0;i<3;i++){
-
     const index = Math.floor(rng()*pool.length);
     const dir = pool.splice(index,1)[0];
 
@@ -242,11 +247,9 @@ function generateMissions(){
 }
 
 function updateMissions(){
-
   if(!pointLocked) return;
 
   missions.forEach((m,i)=>{
-
     if(m.completed) return;
 
     const dot = (x*m.direction.x + y*m.direction.y);
@@ -267,7 +270,6 @@ function updateMissions(){
 }
 
 function tryBoost(i){
-
   const m = missions[i];
   if(m.boosted) return;
 
@@ -289,15 +291,13 @@ function tryBoost(i){
   }
 }
 
-/* BOUCLE MODIFIÉE */
-
 let lastUpdate = 0;
 
 function gameLoop(){
   if(!running) return;
 
   const now = performance.now();
-  const delta = (now - lastUpdate)/1000; // delta en secondes
+  const delta = (now - lastUpdate)/1000;
   lastUpdate = now;
 
   let north=1, south=1, east=1, west=1;
@@ -328,9 +328,9 @@ function gameLoop(){
     totals.west  >= goals.west
   ){
     running = false;
+
     document.getElementById("finalTime").textContent = elapsed.toFixed(2);
 
-    // Calcul des runes gaspillées
     const wasted = 
       Math.max(0, totals.north - goals.north) +
       Math.max(0, totals.south - goals.south) +
@@ -338,8 +338,13 @@ function gameLoop(){
       Math.max(0, totals.west  - goals.west);
 
     document.getElementById("wastedRunes").textContent = Math.floor(wasted);
-    
+
+    // 🔴 MASQUAGE ICI
+    document.getElementById("controlsSection").style.display = "none";
+    document.getElementById("missionsSection").style.display = "none";
+
     document.getElementById("endBox").style.display = "block";
+
     clearInterval(window.gameInterval);
     window.gameInterval = null;
     return;
@@ -347,8 +352,6 @@ function gameLoop(){
 
   draw();
 }
-
-/* UI */
 
 function updateTotals(){
   document.getElementById("totalNorth").textContent = Math.floor(totals.north);
@@ -390,8 +393,6 @@ function draw(){
   ctx.strokeStyle="black";
 }
 
-/* INPUT */
-
 canvas.addEventListener("click",(e)=>{
   if(!running) return;
 
@@ -412,8 +413,6 @@ canvas.addEventListener("click",(e)=>{
   draw();
 });
 
-/* BOUTONS */
-
 document.getElementById("dailyBtn").onclick=()=>{
   const today = new Date().toISOString().split("T")[0];
   const seed = today.split("").reduce((a,c)=>a+c.charCodeAt(0),0);
@@ -424,7 +423,6 @@ document.getElementById("randomBtn").onclick=()=>{
   const seed = Math.floor(Math.random()*2147483647);
   startGame(seed);
 };
-
 </script>
 </body>
 </html>
