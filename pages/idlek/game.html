@@ -33,7 +33,7 @@ footer {
 
 progress { width: 100%; }
 
-/* Couleurs dynamiques */
+/* couleurs */
 progress.completed::-webkit-progress-value { background: #2ecc71; }
 progress.completed::-moz-progress-bar { background: #2ecc71; }
 
@@ -61,7 +61,6 @@ canvas {
 <section class="hero">
 
 <h1>Idle K</h1>
-<p>Atteins l'objectif le plus vite et avec le moins de gaspillage possible.</p>
 
 <div style="margin:1rem 0;">
 <button id="dailyBtn">Partie du jour 🌞</button>
@@ -87,7 +86,7 @@ canvas {
 <td id="goalNorth"></td>
 <td id="totalNorth">0</td>
 <td>
-<progress id="progressNorth" value="0" max="100"></progress>
+<progress id="progressNorth"></progress>
 <span id="labelNorth">0%</span>
 </td>
 </tr>
@@ -97,7 +96,7 @@ canvas {
 <td id="goalSouth"></td>
 <td id="totalSouth">0</td>
 <td>
-<progress id="progressSouth" value="0" max="100"></progress>
+<progress id="progressSouth"></progress>
 <span id="labelSouth">0%</span>
 </td>
 </tr>
@@ -107,7 +106,7 @@ canvas {
 <td id="goalEast"></td>
 <td id="totalEast">0</td>
 <td>
-<progress id="progressEast" value="0" max="100"></progress>
+<progress id="progressEast"></progress>
 <span id="labelEast">0%</span>
 </td>
 </tr>
@@ -117,7 +116,7 @@ canvas {
 <td id="goalWest"></td>
 <td id="totalWest">0</td>
 <td>
-<progress id="progressWest" value="0" max="100"></progress>
+<progress id="progressWest"></progress>
 <span id="labelWest">0%</span>
 </td>
 </tr>
@@ -163,7 +162,8 @@ Ouest : <span id="westRate"></span> /s
 
 <script>
 
-/* RNG */
+/* ===== TON CODE ORIGINAL CONSERVÉ ===== */
+
 function pseudoRandom(seed){
   let s = seed;
   return () => {
@@ -185,7 +185,12 @@ let pointLocked = false;
 let x = 0;
 let y = 0;
 
-/* PROGRESS BARS */
+const canvas = document.getElementById("controlCanvas");
+const ctx = canvas.getContext("2d");
+const radius = canvas.width / 2;
+const center = { x: radius, y: radius };
+
+/* ===== PROGRESS BARS ===== */
 
 function updateProgressBars(){
 
@@ -196,11 +201,11 @@ function updateProgressBars(){
     bar.value = percent;
 
     if(percent >= 100){
-      bar.classList.remove("inprogress");
       bar.classList.add("completed");
+      bar.classList.remove("inprogress");
     } else {
-      bar.classList.remove("completed");
       bar.classList.add("inprogress");
+      bar.classList.remove("completed");
     }
 
     document.getElementById("label"+dir).textContent =
@@ -213,9 +218,10 @@ function updateProgressBars(){
   update("West", totals.west, goals.west);
 }
 
-/* INIT */
+/* ===== START GAME ===== */
 
 function startGame(seed){
+
   rng = pseudoRandom(seed);
 
   const totalGoal = 1200 + Math.floor(rng()*401);
@@ -235,7 +241,12 @@ function startGame(seed){
   document.getElementById("goalEast").textContent  = goals.east;
   document.getElementById("goalWest").textContent  = goals.west;
 
+  generateMissions();
+
   document.getElementById("gameArea").style.display = "block";
+
+  x = 0; y = 0;
+  pointLocked = true;
 
   startTime = performance.now();
   running = true;
@@ -246,7 +257,7 @@ function startGame(seed){
   }
 }
 
-/* LOOP */
+/* ===== LOOP ===== */
 
 let lastUpdate = 0;
 
@@ -257,32 +268,28 @@ function gameLoop(){
   const delta = (now - lastUpdate)/1000;
   lastUpdate = now;
 
-  totals.north += delta;
-  totals.south += delta;
-  totals.east  += delta;
-  totals.west  += delta;
+  let north=1, south=1, east=1, west=1;
+
+  if(pointLocked){
+    north = 1 + y;
+    south = 1 - y;
+    east  = 1 + x;
+    west  = 1 - x;
+  }
+
+  totals.north += (north*globalMultiplier)*delta;
+  totals.south += (south*globalMultiplier)*delta;
+  totals.east  += (east*globalMultiplier)*delta;
+  totals.west  += (west*globalMultiplier)*delta;
 
   updateTotals();
+  updateRates(north,south,east,west);
   updateProgressBars();
 
-  const elapsed = (now - startTime)/1000;
-  document.getElementById("timer").textContent = elapsed.toFixed(1);
-
-  if(
-    totals.north >= goals.north &&
-    totals.south >= goals.south &&
-    totals.east  >= goals.east &&
-    totals.west  >= goals.west
-  ){
-    running = false;
-    document.getElementById("finalTime").textContent = elapsed.toFixed(2);
-    document.getElementById("endBox").style.display = "block";
-    clearInterval(window.gameInterval);
-    window.gameInterval = null;
-  }
+  draw();
 }
 
-/* UI */
+/* ===== UI ===== */
 
 function updateTotals(){
   document.getElementById("totalNorth").textContent = Math.floor(totals.north);
@@ -291,7 +298,67 @@ function updateTotals(){
   document.getElementById("totalWest").textContent  = Math.floor(totals.west);
 }
 
-/* BUTTONS */
+function updateRates(n,s,e,w){
+  document.getElementById("northRate").textContent = n.toFixed(2);
+  document.getElementById("southRate").textContent = s.toFixed(2);
+  document.getElementById("eastRate").textContent  = e.toFixed(2);
+  document.getElementById("westRate").textContent  = w.toFixed(2);
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.beginPath();
+  ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
+  ctx.stroke();
+
+  if(pointLocked){
+    const px = center.x + x*(radius-5);
+    const py = center.y - y*(radius-5);
+    ctx.beginPath();
+    ctx.arc(px,py,6,0,Math.PI*2);
+    ctx.fillStyle="red";
+    ctx.fill();
+  }
+}
+
+/* ===== MISSIONS ===== */
+
+function generateMissions(){
+  const body = document.getElementById("missionsBody");
+  body.innerHTML = "";
+
+  for(let i=0;i<3;i++){
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>Mission ${i+1}</td>
+      <td>
+        <progress value="0" max="100"></progress>
+      </td>
+      <td>-</td>
+    `;
+    body.appendChild(row);
+  }
+}
+
+/* ===== INPUT ===== */
+
+canvas.addEventListener("click",(e)=>{
+  const rect = canvas.getBoundingClientRect();
+  let mx = e.clientX - rect.left - center.x;
+  let my = e.clientY - rect.top - center.y;
+  my = -my;
+
+  let nx = mx/(radius-5);
+  let ny = my/(radius-5);
+
+  const dist = Math.sqrt(nx*nx+ny*ny);
+  if(dist>1){ nx/=dist; ny/=dist; }
+
+  x=nx;
+  y=ny;
+});
+
+/* ===== BUTTONS ===== */
 
 document.getElementById("dailyBtn").onclick=()=>{
   const today = new Date().toISOString().split("T")[0];
