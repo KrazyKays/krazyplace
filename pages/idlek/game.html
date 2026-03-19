@@ -13,8 +13,11 @@ html, body {
   display: flex;
   flex-direction: column;
 }
-main {flex: 1;}
-#gameArea { font-size: 0.9rem; line-height: 1; }
+main {flex: 1; }
+#gameArea {
+  font-size: 0.9rem;
+  line-height: 1;
+}
 .hero { padding: 0.5rem; text-align: center; }
 .logo a { color: lightblue; }
 .container-narrow {
@@ -30,16 +33,7 @@ footer {
   border-top: 1px solid var(--surface-3);
   padding-top: 1rem;
 }
-
 progress { width: 100%; }
-
-/* couleurs */
-progress.completed::-webkit-progress-value { background: #2ecc71; }
-progress.completed::-moz-progress-bar { background: #2ecc71; }
-
-progress.inprogress::-webkit-progress-value { background: #3498db; }
-progress.inprogress::-moz-progress-bar { background: #3498db; }
-
 canvas {
   width: 240px;
   height: 240px;
@@ -61,6 +55,7 @@ canvas {
 <section class="hero">
 
 <h1>Idle K</h1>
+<p>Atteins l'objectf le plus vite et avec le moins de gaspillage possible.</p>
 
 <div style="margin:1rem 0;">
 <button id="dailyBtn">Partie du jour 🌞</button>
@@ -77,49 +72,13 @@ canvas {
 <th>Rune</th>
 <th>Objectif</th>
 <th>Actuel</th>
-<th>Progression</th>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>Nord</td>
-<td id="goalNorth"></td>
-<td id="totalNorth">0</td>
-<td>
-<progress id="progressNorth"></progress>
-<span id="labelNorth">0%</span>
-</td>
-</tr>
-
-<tr>
-<td>Sud</td>
-<td id="goalSouth"></td>
-<td id="totalSouth">0</td>
-<td>
-<progress id="progressSouth"></progress>
-<span id="labelSouth">0%</span>
-</td>
-</tr>
-
-<tr>
-<td>Est</td>
-<td id="goalEast"></td>
-<td id="totalEast">0</td>
-<td>
-<progress id="progressEast"></progress>
-<span id="labelEast">0%</span>
-</td>
-</tr>
-
-<tr>
-<td>Ouest</td>
-<td id="goalWest"></td>
-<td id="totalWest">0</td>
-<td>
-<progress id="progressWest"></progress>
-<span id="labelWest">0%</span>
-</td>
-</tr>
+<tr><td>Nord</td><td id="goalNorth"></td><td id="totalNorth">0</td></tr>
+<tr><td>Sud</td><td id="goalSouth"></td><td id="totalSouth">0</td></tr>
+<tr><td>Est</td><td id="goalEast"></td><td id="totalEast">0</td></tr>
+<tr><td>Ouest</td><td id="goalWest"></td><td id="totalWest">0</td></tr>
 </tbody>
 </table>
 
@@ -145,7 +104,8 @@ Ouest : <span id="westRate"></span> /s
 <th>Action</th>
 </tr>
 </thead>
-<tbody id="missionsBody"></tbody>
+<tbody id="missionsBody">
+</tbody>
 </table>
 
 <div id="endBox" style="display:none;margin-top:1.5rem;">
@@ -162,8 +122,7 @@ Ouest : <span id="westRate"></span> /s
 
 <script>
 
-/* ===== TON CODE ORIGINAL CONSERVÉ ===== */
-
+/* RNG DÉTERMINISTE */
 function pseudoRandom(seed){
   let s = seed;
   return () => {
@@ -190,35 +149,18 @@ const ctx = canvas.getContext("2d");
 const radius = canvas.width / 2;
 const center = { x: radius, y: radius };
 
-/* ===== PROGRESS BARS ===== */
+const directions = [
+  { name:"Nord", x:0, y:1 },
+  { name:"Nord-Est", x:0.707, y:0.707 },
+  { name:"Est", x:1, y:0 },
+  { name:"Sud-Est", x:0.707, y:-0.707 },
+  { name:"Sud", x:0, y:-1 },
+  { name:"Sud-Ouest", x:-0.707, y:-0.707 },
+  { name:"Ouest", x:-1, y:0 },
+  { name:"Nord-Ouest", x:-0.707, y:0.707 }
+];
 
-function updateProgressBars(){
-
-  function update(dir, total, goal){
-    const percent = Math.min(100, (total / goal) * 100);
-
-    const bar = document.getElementById("progress"+dir);
-    bar.value = percent;
-
-    if(percent >= 100){
-      bar.classList.add("completed");
-      bar.classList.remove("inprogress");
-    } else {
-      bar.classList.add("inprogress");
-      bar.classList.remove("completed");
-    }
-
-    document.getElementById("label"+dir).textContent =
-      Math.floor(percent) + "% (" + Math.floor(total) + "/" + goal + ")";
-  }
-
-  update("North", totals.north, goals.north);
-  update("South", totals.south, goals.south);
-  update("East", totals.east, goals.east);
-  update("West", totals.west, goals.west);
-}
-
-/* ===== START GAME ===== */
+/* INITIALISATION */
 
 function startGame(seed){
 
@@ -243,6 +185,8 @@ function startGame(seed){
 
   generateMissions();
 
+  document.getElementById("timer").textContent = "0.0";
+  document.getElementById("endBox").style.display = "none";
   document.getElementById("gameArea").style.display = "block";
 
   x = 0; y = 0;
@@ -251,13 +195,105 @@ function startGame(seed){
   startTime = performance.now();
   running = true;
 
+  // Nouvelle boucle qui fonctionne même en arrière-plan
   lastUpdate = performance.now();
   if(!window.gameInterval) {
-    window.gameInterval = setInterval(gameLoop, 50);
+    window.gameInterval = setInterval(gameLoop, 50); // toutes les 50ms
   }
 }
 
-/* ===== LOOP ===== */
+/* MISSIONS */
+
+function generateMissions(){
+
+  missions = [];
+  const body = document.getElementById("missionsBody");
+  body.innerHTML = "";
+
+  let pool = [...directions];
+
+  for(let i=0;i<3;i++){
+
+    const index = Math.floor(rng()*pool.length);
+    const dir = pool.splice(index,1)[0];
+
+    const mission = {
+      direction: dir,
+      progress: 0,
+      completed: false,
+      boosted: false
+    };
+
+    missions.push(mission);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${dir.name}</td>
+      <td>
+        <progress id="mission${i}" value="0" max="100"></progress>
+        <span id="missionLabel${i}">0%</span>
+      </td>
+      <td>
+        <button id="boost${i}" disabled>
+          50 runes de chaque : x2 production totale
+        </button>
+      </td>
+    `;
+    body.appendChild(row);
+
+    document.getElementById("boost"+i).onclick = ()=>tryBoost(i);
+  }
+}
+
+function updateMissions(){
+
+  if(!pointLocked) return;
+
+  missions.forEach((m,i)=>{
+
+    if(m.completed) return;
+
+    const dot = (x*m.direction.x + y*m.direction.y);
+    const factor = Math.max(0, dot);
+
+    m.progress += factor * 0.1;
+
+    if(m.progress >= 100){
+      m.progress = 100;
+      m.completed = true;
+      document.getElementById("boost"+i).disabled = false;
+    }
+
+    document.getElementById("mission"+i).value = m.progress;
+    document.getElementById("missionLabel"+i).textContent =
+      Math.floor(m.progress)+"%";
+  });
+}
+
+function tryBoost(i){
+
+  const m = missions[i];
+  if(m.boosted) return;
+
+  if(
+    totals.north >= 50 &&
+    totals.south >= 50 &&
+    totals.east  >= 50 &&
+    totals.west  >= 50
+  ){
+    totals.north -= 50;
+    totals.south -= 50;
+    totals.east  -= 50;
+    totals.west  -= 50;
+
+    globalMultiplier *= 2;
+
+    m.boosted = true;
+    document.getElementById("boost"+i).disabled = true;
+  }
+}
+
+/* BOUCLE MODIFIÉE */
 
 let lastUpdate = 0;
 
@@ -265,7 +301,7 @@ function gameLoop(){
   if(!running) return;
 
   const now = performance.now();
-  const delta = (now - lastUpdate)/1000;
+  const delta = (now - lastUpdate)/1000; // delta en secondes
   lastUpdate = now;
 
   let north=1, south=1, east=1, west=1;
@@ -284,12 +320,39 @@ function gameLoop(){
 
   updateTotals();
   updateRates(north,south,east,west);
-  updateProgressBars();
+  updateMissions();
+
+  const elapsed = (now - startTime)/1000;
+  document.getElementById("timer").textContent = elapsed.toFixed(1);
+
+  if(
+    totals.north >= goals.north &&
+    totals.south >= goals.south &&
+    totals.east  >= goals.east  &&
+    totals.west  >= goals.west
+  ){
+    running = false;
+    document.getElementById("finalTime").textContent = elapsed.toFixed(2);
+
+    // Calcul des runes gaspillées
+    const wasted = 
+      Math.max(0, totals.north - goals.north) +
+      Math.max(0, totals.south - goals.south) +
+      Math.max(0, totals.east  - goals.east)  +
+      Math.max(0, totals.west  - goals.west);
+
+    document.getElementById("wastedRunes").textContent = Math.floor(wasted);
+    
+    document.getElementById("endBox").style.display = "block";
+    clearInterval(window.gameInterval);
+    window.gameInterval = null;
+    return;
+  }
 
   draw();
 }
 
-/* ===== UI ===== */
+/* UI */
 
 function updateTotals(){
   document.getElementById("totalNorth").textContent = Math.floor(totals.north);
@@ -299,16 +362,24 @@ function updateTotals(){
 }
 
 function updateRates(n,s,e,w){
-  document.getElementById("northRate").textContent = n.toFixed(2);
-  document.getElementById("southRate").textContent = s.toFixed(2);
-  document.getElementById("eastRate").textContent  = e.toFixed(2);
-  document.getElementById("westRate").textContent  = w.toFixed(2);
+  document.getElementById("northRate").textContent = (n*globalMultiplier).toFixed(2);
+  document.getElementById("southRate").textContent = (s*globalMultiplier).toFixed(2);
+  document.getElementById("eastRate").textContent  = (e*globalMultiplier).toFixed(2);
+  document.getElementById("westRate").textContent  = (w*globalMultiplier).toFixed(2);
 }
 
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.beginPath();
   ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0,center.y);
+  ctx.lineTo(canvas.width,center.y);
+  ctx.moveTo(center.x,0);
+  ctx.lineTo(center.x,canvas.height);
+  ctx.strokeStyle="#888";
   ctx.stroke();
 
   if(pointLocked){
@@ -319,30 +390,15 @@ function draw(){
     ctx.fillStyle="red";
     ctx.fill();
   }
+
+  ctx.strokeStyle="black";
 }
 
-/* ===== MISSIONS ===== */
-
-function generateMissions(){
-  const body = document.getElementById("missionsBody");
-  body.innerHTML = "";
-
-  for(let i=0;i<3;i++){
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>Mission ${i+1}</td>
-      <td>
-        <progress value="0" max="100"></progress>
-      </td>
-      <td>-</td>
-    `;
-    body.appendChild(row);
-  }
-}
-
-/* ===== INPUT ===== */
+/* INPUT */
 
 canvas.addEventListener("click",(e)=>{
+  if(!running) return;
+
   const rect = canvas.getBoundingClientRect();
   let mx = e.clientX - rect.left - center.x;
   let my = e.clientY - rect.top - center.y;
@@ -356,9 +412,11 @@ canvas.addEventListener("click",(e)=>{
 
   x=nx;
   y=ny;
+  pointLocked=true;
+  draw();
 });
 
-/* ===== BUTTONS ===== */
+/* BOUTONS */
 
 document.getElementById("dailyBtn").onclick=()=>{
   const today = new Date().toISOString().split("T")[0];
