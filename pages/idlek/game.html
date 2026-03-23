@@ -34,6 +34,10 @@ footer {
   padding-top: 1rem;
 }
 progress { width: 100%; }
+
+#startSection {
+  margin: 1rem 0;
+}
 </style>
 </head>
 <body>
@@ -51,7 +55,6 @@ progress { width: 100%; }
 <section class="hero">
 
 <h1>Idle K</h1>
-<p>Atteins l'objectif le plus vite et avec le moins de gaspillage possible.</p>
 
 <div style="margin:1rem 0;">
 <button id="dailyBtn">Partie du jour 🌞</button>
@@ -80,9 +83,11 @@ progress { width: 100%; }
 
 <p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
 
-<!-- CONTROLS -->
-<div id="controlsSection">
+<div id="startSection">
+<button id="startBtn">▶ Lancer la partie</button>
+</div>
 
+<div id="controlsSection">
 <canvas id="controlCanvas" width="300" height="300"
 style="margin-top:1rem;border:1px solid var(--surface-3);border-radius:50%;"></canvas>
 
@@ -92,12 +97,9 @@ Sud : <span id="southRate"></span> /s |
 Est : <span id="eastRate"></span> /s |
 Ouest : <span id="westRate"></span> /s
 </div>
-
 </div>
 
-<!-- MISSIONS -->
 <div id="missionsSection">
-
 <h3 style="margin-top:1.5rem;">Missions</h3>
 
 <table>
@@ -108,13 +110,10 @@ Ouest : <span id="westRate"></span> /s
 <th>Action</th>
 </tr>
 </thead>
-<tbody id="missionsBody">
-</tbody>
+<tbody id="missionsBody"></tbody>
 </table>
-
 </div>
 
-<!-- END -->
 <div id="endBox" style="display:none;margin-top:1.5rem;">
 <h2>🏁 Objectifs atteints</h2>
 <p>Temps final : <strong id="finalTime"></strong>s</p>
@@ -154,17 +153,6 @@ const ctx = canvas.getContext("2d");
 const radius = canvas.width / 2;
 const center = { x: radius, y: radius };
 
-const directions = [
-  { name:"Nord", x:0, y:1 },
-  { name:"Nord-Est", x:0.707, y:0.707 },
-  { name:"Est", x:1, y:0 },
-  { name:"Sud-Est", x:0.707, y:-0.707 },
-  { name:"Sud", x:0, y:-1 },
-  { name:"Sud-Ouest", x:-0.707, y:-0.707 },
-  { name:"Ouest", x:-1, y:0 },
-  { name:"Nord-Ouest", x:-0.707, y:0.707 }
-];
-
 function startGame(seed){
   rng = pseudoRandom(seed);
 
@@ -187,37 +175,38 @@ function startGame(seed){
 
   generateMissions();
 
-  document.getElementById("timer").textContent = "0.0";
-  document.getElementById("endBox").style.display = "none";
-
-  document.getElementById("controlsSection").style.display = "block";
-  document.getElementById("missionsSection").style.display = "block";
-
   document.getElementById("gameArea").style.display = "block";
+  document.getElementById("startSection").style.display = "block";
 
-  x = 0; y = 0;
-  pointLocked = true;
+  running = false;
+}
 
+function launchRun(){
   startTime = performance.now();
+  lastUpdate = performance.now();
   running = true;
 
-  lastUpdate = performance.now();
+  document.getElementById("startSection").style.display = "none";
+
   if(!window.gameInterval) {
     window.gameInterval = setInterval(gameLoop, 50);
   }
 }
+
+document.getElementById("startBtn").onclick = launchRun;
 
 function generateMissions(){
   missions = [];
   const body = document.getElementById("missionsBody");
   body.innerHTML = "";
 
-  let pool = [...directions];
+  const directions = [
+    { name:"Nord", x:0, y:1 },
+    { name:"Est", x:1, y:0 },
+    { name:"Sud", x:0, y:-1 }
+  ];
 
-  for(let i=0;i<3;i++){
-    const index = Math.floor(rng()*pool.length);
-    const dir = pool.splice(index,1)[0];
-
+  directions.forEach((dir,i)=>{
     const mission = {
       direction: dir,
       progress: 0,
@@ -236,18 +225,49 @@ function generateMissions(){
       </td>
       <td>
         <button id="boost${i}" disabled>
-          50 runes de chaque : x2 production totale
+          x2 production
         </button>
       </td>
     `;
     body.appendChild(row);
 
     document.getElementById("boost"+i).onclick = ()=>tryBoost(i);
+  });
+}
+
+function tryBoost(i){
+  const m = missions[i];
+
+  if(m.boosted) return;
+
+  if(
+    totals.north >= 50 &&
+    totals.south >= 50 &&
+    totals.east  >= 50 &&
+    totals.west  >= 50
+  ){
+    // paiement
+    totals.north -= 50;
+    totals.south -= 50;
+    totals.east  -= 50;
+    totals.west  -= 50;
+
+    // boost
+    globalMultiplier *= 2;
+    m.boosted = true;
+
+    // UI fix immédiat
+    updateTotals();
+    updateRates(1+y,1-y,1+x,1-x);
+
+    const btn = document.getElementById("boost"+i);
+    btn.disabled = true;
+    btn.textContent = "✔ Activé";
   }
 }
 
 function updateMissions(){
-  if(!pointLocked) return;
+  if(!running) return;
 
   missions.forEach((m,i)=>{
     if(m.completed) return;
@@ -269,28 +289,6 @@ function updateMissions(){
   });
 }
 
-function tryBoost(i){
-  const m = missions[i];
-  if(m.boosted) return;
-
-  if(
-    totals.north >= 50 &&
-    totals.south >= 50 &&
-    totals.east  >= 50 &&
-    totals.west  >= 50
-  ){
-    totals.north -= 50;
-    totals.south -= 50;
-    totals.east  -= 50;
-    totals.west  -= 50;
-
-    globalMultiplier *= 2;
-
-    m.boosted = true;
-    document.getElementById("boost"+i).disabled = true;
-  }
-}
-
 let lastUpdate = 0;
 
 function gameLoop(){
@@ -300,14 +298,10 @@ function gameLoop(){
   const delta = (now - lastUpdate)/1000;
   lastUpdate = now;
 
-  let north=1, south=1, east=1, west=1;
-
-  if(pointLocked){
-    north = 1 + y;
-    south = 1 - y;
-    east  = 1 + x;
-    west  = 1 - x;
-  }
+  let north = 1 + y;
+  let south = 1 - y;
+  let east  = 1 + x;
+  let west  = 1 - x;
 
   totals.north += (north*globalMultiplier)*delta;
   totals.south += (south*globalMultiplier)*delta;
@@ -317,40 +311,6 @@ function gameLoop(){
   updateTotals();
   updateRates(north,south,east,west);
   updateMissions();
-
-  const elapsed = (now - startTime)/1000;
-  document.getElementById("timer").textContent = elapsed.toFixed(1);
-
-  if(
-    totals.north >= goals.north &&
-    totals.south >= goals.south &&
-    totals.east  >= goals.east  &&
-    totals.west  >= goals.west
-  ){
-    running = false;
-
-    document.getElementById("finalTime").textContent = elapsed.toFixed(2);
-
-    const wasted = 
-      Math.max(0, totals.north - goals.north) +
-      Math.max(0, totals.south - goals.south) +
-      Math.max(0, totals.east  - goals.east)  +
-      Math.max(0, totals.west  - goals.west);
-
-    document.getElementById("wastedRunes").textContent = Math.floor(wasted);
-
-    // 🔴 MASQUAGE ICI
-    document.getElementById("controlsSection").style.display = "none";
-    document.getElementById("missionsSection").style.display = "none";
-
-    document.getElementById("endBox").style.display = "block";
-
-    clearInterval(window.gameInterval);
-    window.gameInterval = null;
-    return;
-  }
-
-  draw();
 }
 
 function updateTotals(){
@@ -367,55 +327,8 @@ function updateRates(n,s,e,w){
   document.getElementById("westRate").textContent  = (w*globalMultiplier).toFixed(2);
 }
 
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.beginPath();
-  ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(0,center.y);
-  ctx.lineTo(canvas.width,center.y);
-  ctx.moveTo(center.x,0);
-  ctx.lineTo(center.x,canvas.height);
-  ctx.strokeStyle="#888";
-  ctx.stroke();
-
-  if(pointLocked){
-    const px = center.x + x*(radius-5);
-    const py = center.y - y*(radius-5);
-    ctx.beginPath();
-    ctx.arc(px,py,6,0,Math.PI*2);
-    ctx.fillStyle="red";
-    ctx.fill();
-  }
-
-  ctx.strokeStyle="black";
-}
-
-canvas.addEventListener("click",(e)=>{
-  if(!running) return;
-
-  const rect = canvas.getBoundingClientRect();
-  let mx = e.clientX - rect.left - center.x;
-  let my = e.clientY - rect.top - center.y;
-  my = -my;
-
-  let nx = mx/(radius-5);
-  let ny = my/(radius-5);
-
-  const dist = Math.sqrt(nx*nx+ny*ny);
-  if(dist>1){ nx/=dist; ny/=dist; }
-
-  x=nx;
-  y=ny;
-  pointLocked=true;
-  draw();
-});
-
 document.getElementById("dailyBtn").onclick=()=>{
-  const today = new Date().toISOString().split("T")[0];
-  const seed = today.split("").reduce((a,c)=>a+c.charCodeAt(0),0);
+  const seed = Date.now();
   startGame(seed);
 };
 
