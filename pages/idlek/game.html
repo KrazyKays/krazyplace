@@ -349,15 +349,44 @@ function draw(){
   ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
   ctx.stroke();
 
+  ctx.beginPath();
+  ctx.moveTo(0,center.y);
+  ctx.lineTo(canvas.width,center.y);
+  ctx.moveTo(center.x,0);
+  ctx.lineTo(center.x,canvas.height);
+  ctx.strokeStyle="#888";
+  ctx.stroke();
+
   if(pointLocked){
     const px = center.x + x*(radius-5);
     const py = center.y - y*(radius-5);
-    ctx.beginPath();
-    ctx.arc(px,py,6,0,Math.PI*2);
+@@ -389,40 +357,20 @@
     ctx.fillStyle="red";
     ctx.fill();
   }
+
+  ctx.strokeStyle="black";
 }
+
+canvas.addEventListener("click",(e)=>{
+  if(!running) return;
+
+  const rect = canvas.getBoundingClientRect();
+  let mx = e.clientX - rect.left - center.x;
+  let my = e.clientY - rect.top - center.y;
+  my = -my;
+
+  let nx = mx/(radius-5);
+  let ny = my/(radius-5);
+
+  const dist = Math.sqrt(nx*nx+ny*ny);
+  if(dist>1){ nx/=dist; ny/=dist; }
+
+  x=nx;
+  y=ny;
+  pointLocked=true;
+  draw();
+});
 
 document.getElementById("dailyBtn").onclick=()=>{
   const today = new Date().toISOString().split("T")[0];
