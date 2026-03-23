@@ -389,6 +389,8 @@ function draw(){
   if(pointLocked){
     const px = center.x + x*(radius-5);
     const py = center.y - y*(radius-5);
+    ctx.beginPath();
+    ctx.arc(px,py,6,0,Math.PI*2);
     ctx.fillStyle="red";
     ctx.fill();
   }
