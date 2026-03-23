@@ -34,10 +34,6 @@ footer {
   padding-top: 1rem;
 }
 progress { width: 100%; }
-
-#startSection {
-  margin: 1rem 0;
-}
 </style>
 </head>
 <body>
@@ -83,11 +79,6 @@ progress { width: 100%; }
 </table>
 
 <p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
-
-<!-- START BUTTON -->
-<div id="startSection">
-<button id="startBtn">▶ Lancer la partie</button>
-</div>
 
 <!-- CONTROLS -->
 <div id="controlsSection">
@@ -201,30 +192,20 @@ function startGame(seed){
 
   document.getElementById("controlsSection").style.display = "block";
   document.getElementById("missionsSection").style.display = "block";
-  document.getElementById("startSection").style.display = "block";
 
   document.getElementById("gameArea").style.display = "block";
 
   x = 0; y = 0;
   pointLocked = true;
 
-  running = false; // ⛔ important : pas encore lancé
-  draw();
-}
-
-function launchRun(){
   startTime = performance.now();
-  lastUpdate = performance.now();
   running = true;
 
-  document.getElementById("startSection").style.display = "none";
-
+  lastUpdate = performance.now();
   if(!window.gameInterval) {
     window.gameInterval = setInterval(gameLoop, 50);
   }
 }
-
-document.getElementById("startBtn").onclick = launchRun;
 
 function generateMissions(){
   missions = [];
@@ -266,7 +247,7 @@ function generateMissions(){
 }
 
 function updateMissions(){
-  if(!pointLocked || !running) return;
+  if(!pointLocked) return;
 
   missions.forEach((m,i)=>{
     if(m.completed) return;
@@ -358,6 +339,7 @@ function gameLoop(){
 
     document.getElementById("wastedRunes").textContent = Math.floor(wasted);
 
+    // 🔴 MASQUAGE ICI
     document.getElementById("controlsSection").style.display = "none";
     document.getElementById("missionsSection").style.display = "none";
 
