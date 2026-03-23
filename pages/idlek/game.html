@@ -34,10 +34,6 @@ footer {
   padding-top: 1rem;
 }
 progress { width: 100%; }
-#startBtn {
-  margin-top: 1rem;
-  display: none;
-}
 </style>
 </head>
 <body>
@@ -62,8 +58,6 @@ progress { width: 100%; }
 <button id="randomBtn">Seed aléatoire 🎲</button>
 </div>
 
-<button id="startBtn">▶ Start</button>
-
 <div id="gameArea" style="display:none;">
 
 <h3>Objectifs quotidiens</h3>
@@ -86,7 +80,9 @@ progress { width: 100%; }
 
 <p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
 
+<!-- CONTROLS -->
 <div id="controlsSection">
+
 <canvas id="controlCanvas" width="300" height="300"
 style="margin-top:1rem;border:1px solid var(--surface-3);border-radius:50%;"></canvas>
 
@@ -96,10 +92,14 @@ Sud : <span id="southRate"></span> /s |
 Est : <span id="eastRate"></span> /s |
 Ouest : <span id="westRate"></span> /s
 </div>
+
 </div>
 
+<!-- MISSIONS -->
 <div id="missionsSection">
+
 <h3 style="margin-top:1.5rem;">Missions</h3>
+
 <table>
 <thead>
 <tr>
@@ -108,10 +108,13 @@ Ouest : <span id="westRate"></span> /s
 <th>Action</th>
 </tr>
 </thead>
-<tbody id="missionsBody"></tbody>
+<tbody id="missionsBody">
+</tbody>
 </table>
+
 </div>
 
+<!-- END -->
 <div id="endBox" style="display:none;margin-top:1.5rem;">
 <h2>🏁 Objectifs atteints</h2>
 <p>Temps final : <strong id="finalTime"></strong>s</p>
@@ -125,39 +128,251 @@ Ouest : <span id="westRate"></span> /s
 <footer><p>© KrazyPlace</p></footer>
 
 <script>
+function pseudoRandom(seed){
+  let s = seed;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+let rng;
+let goals = {};
+let totals = { north:0, south:0, east:0, west:0 };
+let missions = [];
+let globalMultiplier = 1;
+
+let startTime;
+let running = false;
+let pointLocked = false;
+
 let x = 0;
 let y = 0;
-let pointLocked = false;
-let running = false;
 
 const canvas = document.getElementById("controlCanvas");
 const ctx = canvas.getContext("2d");
 const radius = canvas.width / 2;
 const center = { x: radius, y: radius };
 
-function setupGame(){
+const directions = [
+  { name:"Nord", x:0, y:1 },
+  { name:"Nord-Est", x:0.707, y:0.707 },
+  { name:"Est", x:1, y:0 },
+  { name:"Sud-Est", x:0.707, y:-0.707 },
+  { name:"Sud", x:0, y:-1 },
+  { name:"Sud-Ouest", x:-0.707, y:-0.707 },
+  { name:"Ouest", x:-1, y:0 },
+  { name:"Nord-Ouest", x:-0.707, y:0.707 }
+];
+
+function startGame(seed){
+  rng = pseudoRandom(seed);
+
+  const totalGoal = 1200 + Math.floor(rng()*401);
+  let parts = [rng(), rng(), rng(), rng()];
+  let sum = parts.reduce((a,b)=>a+b,0);
+
+  goals.north = Math.floor((parts[0]/sum)*totalGoal);
+  goals.south = Math.floor((parts[1]/sum)*totalGoal);
+  goals.east  = Math.floor((parts[2]/sum)*totalGoal);
+  goals.west  = totalGoal - goals.north - goals.south - goals.east;
+
+  totals = { north:0, south:0, east:0, west:0 };
+  globalMultiplier = 1;
+
+  document.getElementById("goalNorth").textContent = goals.north;
+  document.getElementById("goalSouth").textContent = goals.south;
+  document.getElementById("goalEast").textContent  = goals.east;
+  document.getElementById("goalWest").textContent  = goals.west;
+
+  generateMissions();
+
+  document.getElementById("timer").textContent = "0.0";
+  document.getElementById("endBox").style.display = "none";
+
+  document.getElementById("controlsSection").style.display = "block";
+  document.getElementById("missionsSection").style.display = "block";
+
   document.getElementById("gameArea").style.display = "block";
-  document.getElementById("startBtn").style.display = "inline-block";
-  draw(); // ✅ important
+
+  x = 0; y = 0;
+  pointLocked = true;
+
+  startTime = performance.now();
+  running = true;
+
+  lastUpdate = performance.now();
+  if(!window.gameInterval) {
+    window.gameInterval = setInterval(gameLoop, 50);
+  }
 }
 
-function startRun(){
-  x = 0;
-  y = 0;
-  pointLocked = true;
-  running = true;
-  draw(); // ✅ important
+function generateMissions(){
+  missions = [];
+  const body = document.getElementById("missionsBody");
+  body.innerHTML = "";
+
+  let pool = [...directions];
+
+  for(let i=0;i<3;i++){
+    const index = Math.floor(rng()*pool.length);
+    const dir = pool.splice(index,1)[0];
+
+    const mission = {
+      direction: dir,
+      progress: 0,
+      completed: false,
+      boosted: false
+    };
+
+    missions.push(mission);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${dir.name}</td>
+      <td>
+        <progress id="mission${i}" value="0" max="100"></progress>
+        <span id="missionLabel${i}">0%</span>
+      </td>
+      <td>
+        <button id="boost${i}" disabled>
+          50 runes de chaque : x2 production totale
+        </button>
+      </td>
+    `;
+    body.appendChild(row);
+
+    document.getElementById("boost"+i).onclick = ()=>tryBoost(i);
+  }
+}
+
+function updateMissions(){
+  if(!pointLocked) return;
+
+  missions.forEach((m,i)=>{
+    if(m.completed) return;
+
+    const dot = (x*m.direction.x + y*m.direction.y);
+    const factor = Math.max(0, dot);
+
+    m.progress += factor * 0.1;
+
+    if(m.progress >= 100){
+      m.progress = 100;
+      m.completed = true;
+      document.getElementById("boost"+i).disabled = false;
+    }
+
+    document.getElementById("mission"+i).value = m.progress;
+    document.getElementById("missionLabel"+i).textContent =
+      Math.floor(m.progress)+"%";
+  });
+}
+
+function tryBoost(i){
+  const m = missions[i];
+  if(m.boosted) return;
+
+  if(
+    totals.north >= 50 &&
+    totals.south >= 50 &&
+    totals.east  >= 50 &&
+    totals.west  >= 50
+  ){
+    totals.north -= 50;
+    totals.south -= 50;
+    totals.east  -= 50;
+    totals.west  -= 50;
+
+    globalMultiplier *= 2;
+
+    m.boosted = true;
+    document.getElementById("boost"+i).disabled = true;
+  }
+}
+
+let lastUpdate = 0;
+
+function gameLoop(){
+  if(!running) return;
+
+  const now = performance.now();
+  const delta = (now - lastUpdate)/1000;
+  lastUpdate = now;
+
+  let north=1, south=1, east=1, west=1;
+
+  if(pointLocked){
+    north = 1 + y;
+    south = 1 - y;
+    east  = 1 + x;
+    west  = 1 - x;
+  }
+
+  totals.north += (north*globalMultiplier)*delta;
+  totals.south += (south*globalMultiplier)*delta;
+  totals.east  += (east*globalMultiplier)*delta;
+  totals.west  += (west*globalMultiplier)*delta;
+
+  updateTotals();
+  updateRates(north,south,east,west);
+  updateMissions();
+
+  const elapsed = (now - startTime)/1000;
+  document.getElementById("timer").textContent = elapsed.toFixed(1);
+
+  if(
+    totals.north >= goals.north &&
+    totals.south >= goals.south &&
+    totals.east  >= goals.east  &&
+    totals.west  >= goals.west
+  ){
+    running = false;
+
+    document.getElementById("finalTime").textContent = elapsed.toFixed(2);
+
+    const wasted = 
+      Math.max(0, totals.north - goals.north) +
+      Math.max(0, totals.south - goals.south) +
+      Math.max(0, totals.east  - goals.east)  +
+      Math.max(0, totals.west  - goals.west);
+
+    document.getElementById("wastedRunes").textContent = Math.floor(wasted);
+
+    // 🔴 MASQUAGE ICI
+    document.getElementById("controlsSection").style.display = "none";
+    document.getElementById("missionsSection").style.display = "none";
+
+    document.getElementById("endBox").style.display = "block";
+
+    clearInterval(window.gameInterval);
+    window.gameInterval = null;
+    return;
+  }
+
+  draw();
+}
+
+function updateTotals(){
+  document.getElementById("totalNorth").textContent = Math.floor(totals.north);
+  document.getElementById("totalSouth").textContent = Math.floor(totals.south);
+  document.getElementById("totalEast").textContent  = Math.floor(totals.east);
+  document.getElementById("totalWest").textContent  = Math.floor(totals.west);
+}
+
+function updateRates(n,s,e,w){
+  document.getElementById("northRate").textContent = (n*globalMultiplier).toFixed(2);
+  document.getElementById("southRate").textContent = (s*globalMultiplier).toFixed(2);
+  document.getElementById("eastRate").textContent  = (e*globalMultiplier).toFixed(2);
+  document.getElementById("westRate").textContent  = (w*globalMultiplier).toFixed(2);
 }
 
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // cercle principal
   ctx.beginPath();
   ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
   ctx.stroke();
 
-  // axes
   ctx.beginPath();
   ctx.moveTo(0,center.y);
   ctx.lineTo(canvas.width,center.y);
@@ -166,14 +381,12 @@ function draw(){
   ctx.strokeStyle="#888";
   ctx.stroke();
 
-  // 🔴 POINT ROUGE (FIX PRINCIPAL)
   if(pointLocked){
     const px = center.x + x*(radius-5);
     const py = center.y - y*(radius-5);
-
     ctx.beginPath();
-    ctx.arc(px, py, 6, 0, Math.PI * 2); // ← manquait
-    ctx.fillStyle = "red";
+    ctx.arc(px,py,6,0,Math.PI*2);
+    ctx.fillStyle="red";
     ctx.fill();
   }
 
@@ -194,17 +407,22 @@ canvas.addEventListener("click",(e)=>{
   const dist = Math.sqrt(nx*nx+ny*ny);
   if(dist>1){ nx/=dist; ny/=dist; }
 
-  x = nx;
-  y = ny;
-  pointLocked = true;
-
-  draw(); // refresh immédiat
+  x=nx;
+  y=ny;
+  pointLocked=true;
+  draw();
 });
 
-document.getElementById("dailyBtn").onclick = setupGame;
-document.getElementById("randomBtn").onclick = setupGame;
-document.getElementById("startBtn").onclick = startRun;
-</script>
+document.getElementById("dailyBtn").onclick=()=>{
+  const today = new Date().toISOString().split("T")[0];
+  const seed = today.split("").reduce((a,c)=>a+c.charCodeAt(0),0);
+  startGame(seed);
+};
 
+document.getElementById("randomBtn").onclick=()=>{
+  const seed = Math.floor(Math.random()*2147483647);
+  startGame(seed);
+};
+</script>
 </body>
 </html>
