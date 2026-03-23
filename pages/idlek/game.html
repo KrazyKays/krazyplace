@@ -34,6 +34,10 @@ footer {
   padding-top: 1rem;
 }
 progress { width: 100%; }
+#startBtn {
+  margin-top: 1rem;
+  display: none;
+}
 </style>
 </head>
 <body>
@@ -58,6 +62,8 @@ progress { width: 100%; }
 <button id="randomBtn">Seed aléatoire 🎲</button>
 </div>
 
+<button id="startBtn">▶ Start</button>
+
 <div id="gameArea" style="display:none;">
 
 <h3>Objectifs quotidiens</h3>
@@ -80,9 +86,7 @@ progress { width: 100%; }
 
 <p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
 
-<!-- CONTROLS -->
 <div id="controlsSection">
-
 <canvas id="controlCanvas" width="300" height="300"
 style="margin-top:1rem;border:1px solid var(--surface-3);border-radius:50%;"></canvas>
 
@@ -92,14 +96,10 @@ Sud : <span id="southRate"></span> /s |
 Est : <span id="eastRate"></span> /s |
 Ouest : <span id="westRate"></span> /s
 </div>
-
 </div>
 
-<!-- MISSIONS -->
 <div id="missionsSection">
-
 <h3 style="margin-top:1.5rem;">Missions</h3>
-
 <table>
 <thead>
 <tr>
@@ -108,13 +108,10 @@ Ouest : <span id="westRate"></span> /s
 <th>Action</th>
 </tr>
 </thead>
-<tbody id="missionsBody">
-</tbody>
+<tbody id="missionsBody"></tbody>
 </table>
-
 </div>
 
-<!-- END -->
 <div id="endBox" style="display:none;margin-top:1.5rem;">
 <h2>🏁 Objectifs atteints</h2>
 <p>Temps final : <strong id="finalTime"></strong>s</p>
@@ -165,7 +162,7 @@ const directions = [
   { name:"Nord-Ouest", x:-0.707, y:0.707 }
 ];
 
-function startGame(seed){
+function setupGame(seed){
   rng = pseudoRandom(seed);
 
   const totalGoal = 1200 + Math.floor(rng()*401);
@@ -192,9 +189,14 @@ function startGame(seed){
 
   document.getElementById("controlsSection").style.display = "block";
   document.getElementById("missionsSection").style.display = "block";
-
   document.getElementById("gameArea").style.display = "block";
 
+  document.getElementById("startBtn").style.display = "inline-block";
+
+  running = false;
+}
+
+function startRun(){
   x = 0; y = 0;
   pointLocked = true;
 
@@ -202,9 +204,12 @@ function startGame(seed){
   running = true;
 
   lastUpdate = performance.now();
+
   if(!window.gameInterval) {
     window.gameInterval = setInterval(gameLoop, 50);
   }
+
+  document.getElementById("startBtn").style.display = "none";
 }
 
 function generateMissions(){
@@ -321,35 +326,6 @@ function gameLoop(){
   const elapsed = (now - startTime)/1000;
   document.getElementById("timer").textContent = elapsed.toFixed(1);
 
-  if(
-    totals.north >= goals.north &&
-    totals.south >= goals.south &&
-    totals.east  >= goals.east  &&
-    totals.west  >= goals.west
-  ){
-    running = false;
-
-    document.getElementById("finalTime").textContent = elapsed.toFixed(2);
-
-    const wasted = 
-      Math.max(0, totals.north - goals.north) +
-      Math.max(0, totals.south - goals.south) +
-      Math.max(0, totals.east  - goals.east)  +
-      Math.max(0, totals.west  - goals.west);
-
-    document.getElementById("wastedRunes").textContent = Math.floor(wasted);
-
-    // 🔴 MASQUAGE ICI
-    document.getElementById("controlsSection").style.display = "none";
-    document.getElementById("missionsSection").style.display = "none";
-
-    document.getElementById("endBox").style.display = "block";
-
-    clearInterval(window.gameInterval);
-    window.gameInterval = null;
-    return;
-  }
-
   draw();
 }
 
@@ -373,14 +349,6 @@ function draw(){
   ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
   ctx.stroke();
 
-  ctx.beginPath();
-  ctx.moveTo(0,center.y);
-  ctx.lineTo(canvas.width,center.y);
-  ctx.moveTo(center.x,0);
-  ctx.lineTo(center.x,canvas.height);
-  ctx.strokeStyle="#888";
-  ctx.stroke();
-
   if(pointLocked){
     const px = center.x + x*(radius-5);
     const py = center.y - y*(radius-5);
@@ -389,40 +357,20 @@ function draw(){
     ctx.fillStyle="red";
     ctx.fill();
   }
-
-  ctx.strokeStyle="black";
 }
-
-canvas.addEventListener("click",(e)=>{
-  if(!running) return;
-
-  const rect = canvas.getBoundingClientRect();
-  let mx = e.clientX - rect.left - center.x;
-  let my = e.clientY - rect.top - center.y;
-  my = -my;
-
-  let nx = mx/(radius-5);
-  let ny = my/(radius-5);
-
-  const dist = Math.sqrt(nx*nx+ny*ny);
-  if(dist>1){ nx/=dist; ny/=dist; }
-
-  x=nx;
-  y=ny;
-  pointLocked=true;
-  draw();
-});
 
 document.getElementById("dailyBtn").onclick=()=>{
   const today = new Date().toISOString().split("T")[0];
   const seed = today.split("").reduce((a,c)=>a+c.charCodeAt(0),0);
-  startGame(seed);
+  setupGame(seed);
 };
 
 document.getElementById("randomBtn").onclick=()=>{
   const seed = Math.floor(Math.random()*2147483647);
-  startGame(seed);
+  setupGame(seed);
 };
+
+document.getElementById("startBtn").onclick=startRun;
 </script>
 </body>
 </html>
