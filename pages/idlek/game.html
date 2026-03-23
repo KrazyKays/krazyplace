@@ -326,6 +326,35 @@ function gameLoop(){
   const elapsed = (now - startTime)/1000;
   document.getElementById("timer").textContent = elapsed.toFixed(1);
 
+  if(
+    totals.north >= goals.north &&
+    totals.south >= goals.south &&
+    totals.east  >= goals.east  &&
+    totals.west  >= goals.west
+  ){
+    running = false;
+
+    document.getElementById("finalTime").textContent = elapsed.toFixed(2);
+
+    const wasted = 
+      Math.max(0, totals.north - goals.north) +
+      Math.max(0, totals.south - goals.south) +
+      Math.max(0, totals.east  - goals.east)  +
+      Math.max(0, totals.west  - goals.west);
+
+    document.getElementById("wastedRunes").textContent = Math.floor(wasted);
+
+    // 🔴 MASQUAGE ICI
+    document.getElementById("controlsSection").style.display = "none";
+    document.getElementById("missionsSection").style.display = "none";
+
+    document.getElementById("endBox").style.display = "block";
+
+    clearInterval(window.gameInterval);
+    window.gameInterval = null;
+    return;
+  }
+
   draw();
 }
 
