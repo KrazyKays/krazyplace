@@ -4,85 +4,98 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>KrazyPlace — Idle K</title>
-
 <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
 
 <style>
-body { display:flex; flex-direction:column; min-height:100vh; }
-main { flex:1; }
-
+html, body {
+  height: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+main {flex: 1;}
+#gameArea { font-size: 0.9rem; line-height: 1; }
+.hero { padding: 0.5rem; text-align: center; }
+.logo a { color: lightblue; }
 .container-narrow {
-  max-width:900px;
-  margin:auto;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
 }
-
-#gameArea, #preGame { display:none; }
-
-button:disabled {
-  opacity:0.4;
-  cursor:not-allowed;
+table { width: 100%; text-align: center; }
+td, th { padding: 0.5rem; }
+footer {
+  margin-top: 1rem;
+  text-align: center;
+  border-top: 1px solid var(--surface-3);
+  padding-top: 1rem;
 }
-canvas {
-  border:1px solid var(--surface-3);
-  border-radius:50%;
+progress { width: 100%; }
+.disabled-btn {
+  opacity: 0.5;
 }
 </style>
 </head>
-
 <body>
 
+<header class="container container-narrow">
+<nav>
+<ul>
+<li class="logo"><a href="/krazyplace">KrazyPlace</a></li>
+<li><a href="#">Idle K</a></li>
+</ul>
+</nav>
+</header>
+
 <main class="container container-narrow">
+<section class="hero">
 
 <h1>Idle K</h1>
 
-<!-- MENU -->
-<div id="menu">
-<button id="dailyBtn">Partie du jour</button>
-<button id="randomBtn">Seed aléatoire</button>
+<div style="margin:1rem 0;">
+<button id="dailyBtn">Partie du jour 🌞</button>
+<button id="randomBtn">Seed aléatoire 🎲</button>
 </div>
 
-<!-- PRE GAME -->
-<div id="preGame">
-<h2>Briefing</h2>
+<!-- PREVIEW -->
+<div id="previewArea" style="display:none;">
+<h3>Objectifs de la partie</h3>
 
-<h3>Objectifs</h3>
-<ul>
-<li>Nord : <span id="goalNorth"></span></li>
-<li>Sud : <span id="goalSouth"></span></li>
-<li>Est : <span id="goalEast"></span></li>
-<li>Ouest : <span id="goalWest"></span></li>
-</ul>
-
-<h3>Missions</h3>
 <table>
-<tbody id="missionsPreview"></tbody>
+<tr><td>Nord</td><td id="pGoalNorth"></td></tr>
+<tr><td>Sud</td><td id="pGoalSouth"></td></tr>
+<tr><td>Est</td><td id="pGoalEast"></td></tr>
+<tr><td>Ouest</td><td id="pGoalWest"></td></tr>
 </table>
 
-<button id="startBtn">Start Game</button>
+<h3>Missions</h3>
+<ul id="previewMissions"></ul>
+
+<button id="startBtn">▶️ Lancer la partie</button>
 </div>
 
 <!-- GAME -->
-<div id="gameArea">
+<div id="gameArea" style="display:none;">
 
-<p>Temps : <span id="timer">0</span>s</p>
-
+<h3>Objectifs</h3>
 <table>
-<tr>
-<td>Nord: <span id="totalNorth">0</span></td>
-<td>Sud: <span id="totalSouth">0</span></td>
-<td>Est: <span id="totalEast">0</span></td>
-<td>Ouest: <span id="totalWest">0</span></td>
-</tr>
+<tr><td>Nord</td><td id="goalNorth"></td><td id="totalNorth">0</td></tr>
+<tr><td>Sud</td><td id="goalSouth"></td><td id="totalSouth">0</td></tr>
+<tr><td>Est</td><td id="goalEast"></td><td id="totalEast">0</td></tr>
+<tr><td>Ouest</td><td id="goalWest"></td><td id="totalWest">0</td></tr>
 </table>
 
-<canvas id="controlCanvas" width="300" height="300"></canvas>
+<p>Temps : <strong id="timer">0.0</strong>s</p>
 
-<p>
+<canvas id="controlCanvas" width="300" height="300"
+style="margin-top:1rem;border:1px solid var(--surface-3);border-radius:50%;"></canvas>
+
+<div style="margin-top:1rem;">
 Nord : <span id="northRate"></span> |
 Sud : <span id="southRate"></span> |
 Est : <span id="eastRate"></span> |
 Ouest : <span id="westRate"></span>
-</p>
+</div>
 
 <h3>Missions</h3>
 <table>
@@ -90,17 +103,17 @@ Ouest : <span id="westRate"></span>
 </table>
 
 <div id="endBox" style="display:none;">
-<h2>Fin</h2>
-<p>Temps : <span id="finalTime"></span></p>
-<p>Runes gaspillées : <span id="wastedRunes"></span></p>
+<h2>🏁 Terminé</h2>
+<p>Temps : <strong id="finalTime"></strong></p>
 </div>
 
 </div>
-
+</section>
 </main>
 
+<footer><p>© KrazyPlace</p></footer>
+
 <script>
-// -------- RNG ----------
 function pseudoRandom(seed){
   let s = seed;
   return () => {
@@ -109,261 +122,168 @@ function pseudoRandom(seed){
   };
 }
 
-let rng;
-let goals = {};
-let totals = {};
-let missions = [];
-let globalMultiplier = 1;
-
-let running = false;
+let rng, goals={}, totals, missions=[];
+let globalMultiplier=1;
+let running=false;
 let startTime;
-let lastUpdate = 0;
-
-let x=0,y=0,pointLocked=true;
-
-// -------- CANVAS ----------
-const canvas = document.getElementById("controlCanvas");
-const ctx = canvas.getContext("2d");
-const radius = canvas.width/2;
-const center = {x:radius,y:radius};
 
 const directions = [
   { name:"Nord", x:0, y:1 },
-  { name:"Nord-Est", x:0.707, y:0.707 },
   { name:"Est", x:1, y:0 },
-  { name:"Sud-Est", x:0.707, y:-0.707 },
   { name:"Sud", x:0, y:-1 },
-  { name:"Sud-Ouest", x:-0.707, y:-0.707 },
-  { name:"Ouest", x:-1, y:0 },
-  { name:"Nord-Ouest", x:-0.707, y:0.707 }
+  { name:"Ouest", x:-1, y:0 }
 ];
 
-// -------- SETUP ONLY ----------
-function setupGame(seed){
+let selectedSeed;
+
+/* ================= PREVIEW ================= */
+
+function prepareGame(seed){
+  selectedSeed = seed;
   rng = pseudoRandom(seed);
 
-  const totalGoal = 1200 + Math.floor(rng()*401);
+  const totalGoal = 1200 + Math.floor(rng()*400);
   let parts = [rng(),rng(),rng(),rng()];
   let sum = parts.reduce((a,b)=>a+b,0);
 
-  goals.north = Math.floor(parts[0]/sum*totalGoal);
-  goals.south = Math.floor(parts[1]/sum*totalGoal);
-  goals.east  = Math.floor(parts[2]/sum*totalGoal);
-  goals.west  = totalGoal - goals.north - goals.south - goals.east;
+  goals = {
+    north: Math.floor(parts[0]/sum*totalGoal),
+    south: Math.floor(parts[1]/sum*totalGoal),
+    east:  Math.floor(parts[2]/sum*totalGoal),
+  };
+  goals.west = totalGoal - goals.north - goals.south - goals.east;
 
-  generateMissions();
+  document.getElementById("pGoalNorth").textContent = goals.north;
+  document.getElementById("pGoalSouth").textContent = goals.south;
+  document.getElementById("pGoalEast").textContent = goals.east;
+  document.getElementById("pGoalWest").textContent = goals.west;
 
-  // preview
-  document.getElementById("goalNorth").textContent = goals.north;
-  document.getElementById("goalSouth").textContent = goals.south;
-  document.getElementById("goalEast").textContent  = goals.east;
-  document.getElementById("goalWest").textContent  = goals.west;
+  const list = document.getElementById("previewMissions");
+  list.innerHTML = "";
 
-  renderPreview();
+  missions = [];
 
-  document.getElementById("menu").style.display="none";
-  document.getElementById("preGame").style.display="block";
+  for(let i=0;i<3;i++){
+    const dir = directions[i];
+    missions.push({direction:dir,progress:0,completed:false,boosted:false});
+    const li = document.createElement("li");
+    li.textContent = dir.name;
+    list.appendChild(li);
+  }
+
+  document.getElementById("previewArea").style.display="block";
 }
 
-// -------- START GAME ----------
+/* ================= GAME ================= */
+
 function startGame(){
   totals = {north:0,south:0,east:0,west:0};
   globalMultiplier = 1;
 
-  document.getElementById("preGame").style.display="none";
+  document.getElementById("previewArea").style.display="none";
   document.getElementById("gameArea").style.display="block";
 
-  renderMissions();
+  document.getElementById("goalNorth").textContent = goals.north;
+  document.getElementById("goalSouth").textContent = goals.south;
+  document.getElementById("goalEast").textContent = goals.east;
+  document.getElementById("goalWest").textContent = goals.west;
+
+  generateMissionsUI();
 
   startTime = performance.now();
-  lastUpdate = performance.now();
   running = true;
-
-  gameLoop();
+  setInterval(loop,100);
 }
 
-// -------- MISSIONS ----------
-function generateMissions(){
-  missions=[];
-  let pool=[...directions];
+function generateMissionsUI(){
+  const body = document.getElementById("missionsBody");
+  body.innerHTML="";
 
-  for(let i=0;i<3;i++){
-    const index=Math.floor(rng()*pool.length);
-    const dir=pool.splice(index,1)[0];
+  missions.forEach((m,i)=>{
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${m.direction.name}</td>
+      <td><progress id="prog${i}" max="100"></progress></td>
+      <td><button id="btn${i}">Pas assez de runes</button></td>
+    `;
+    body.appendChild(row);
 
-    missions.push({
-      direction:dir,
-      progress:0,
-      completed:false,
-      boosted:false
-    });
+    document.getElementById("btn"+i).onclick=()=>buyBoost(i);
+  });
+}
+
+function buyBoost(i){
+  const m = missions[i];
+  if(m.boosted) return;
+
+  if(canAfford()){
+    spend();
+    globalMultiplier*=2;
+    m.boosted=true;
   }
 }
 
-function renderPreview(){
-  const body=document.getElementById("missionsPreview");
-  body.innerHTML="";
-  missions.forEach(m=>{
-    body.innerHTML += `<tr><td>${m.direction.name}</td><td>Orientation requise</td></tr>`;
-  });
+function canAfford(){
+  return totals.north>=50 && totals.south>=50 &&
+         totals.east>=50 && totals.west>=50;
 }
 
-function renderMissions(){
-  const body=document.getElementById("missionsBody");
-  body.innerHTML="";
-
-  missions.forEach((m,i)=>{
-    body.innerHTML+=`
-    <tr>
-      <td>${m.direction.name}</td>
-      <td>
-        <progress id="mission${i}" value="0" max="100"></progress>
-      </td>
-      <td>
-        <button id="boost${i}" disabled>
-          50 runes de chaque
-        </button>
-      </td>
-    </tr>`;
-  });
+function spend(){
+  totals.north-=50;
+  totals.south-=50;
+  totals.east-=50;
+  totals.west-=50;
 }
 
-// -------- BOOST ----------
 function updateButtons(){
   missions.forEach((m,i)=>{
-    const btn=document.getElementById("boost"+i);
-    if(!btn) return;
+    const btn = document.getElementById("btn"+i);
 
     if(m.boosted){
       btn.textContent="Acheté";
       btn.disabled=true;
-      return;
-    }
-
-    const canBuy =
-      totals.north>=50 &&
-      totals.south>=50 &&
-      totals.east>=50 &&
-      totals.west>=50;
-
-    btn.disabled = !(canBuy && m.completed);
-
-    btn.onclick=()=>{
-      if(!canBuy || !m.completed) return;
-
-      totals.north-=50;
-      totals.south-=50;
-      totals.east-=50;
-      totals.west-=50;
-
-      globalMultiplier*=2;
-
-      m.boosted=true;
-      btn.textContent="Acheté";
+    } else if(canAfford()){
+      btn.textContent="Acheter boost";
+      btn.disabled=false;
+    } else {
+      btn.textContent="Pas assez de runes";
       btn.disabled=true;
-    };
+    }
   });
 }
 
-// -------- LOOP ----------
-function gameLoop(){
+function loop(){
   if(!running) return;
 
-  const now=performance.now();
-  const delta=(now-lastUpdate)/1000;
-  lastUpdate=now;
+  totals.north+=1;
+  totals.south+=1;
+  totals.east+=1;
+  totals.west+=1;
 
-  let north=1+y;
-  let south=1-y;
-  let east=1+x;
-  let west=1-x;
-
-  totals.north += north*globalMultiplier*delta;
-  totals.south += south*globalMultiplier*delta;
-  totals.east  += east *globalMultiplier*delta;
-  totals.west  += west *globalMultiplier*delta;
-
-  updateUI(north,south,east,west);
-  updateMissions();
   updateButtons();
 
-  const elapsed=(now-startTime)/1000;
-  document.getElementById("timer").textContent=elapsed.toFixed(1);
-
-  if(
-    totals.north>=goals.north &&
-    totals.south>=goals.south &&
-    totals.east>=goals.east &&
-    totals.west>=goals.west
-  ){
-    running=false;
-
-    document.getElementById("finalTime").textContent=elapsed.toFixed(2);
-
-    const wasted =
-      Math.max(0,totals.north-goals.north)+
-      Math.max(0,totals.south-goals.south)+
-      Math.max(0,totals.east-goals.east)+
-      Math.max(0,totals.west-goals.west);
-
-    document.getElementById("wastedRunes").textContent=Math.floor(wasted);
-    document.getElementById("endBox").style.display="block";
-    return;
-  }
-
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
-// -------- MISSIONS UPDATE ----------
-function updateMissions(){
-  missions.forEach((m,i)=>{
-    if(m.completed) return;
-
-    const dot=(x*m.direction.x + y*m.direction.y);
-    const factor=Math.max(0,dot);
-
-    m.progress += factor*0.1;
-
-    if(m.progress>=100){
-      m.progress=100;
-      m.completed=true;
-    }
-
-    document.getElementById("mission"+i).value=m.progress;
-  });
-}
-
-// -------- UI ----------
-function updateUI(n,s,e,w){
   document.getElementById("totalNorth").textContent=Math.floor(totals.north);
   document.getElementById("totalSouth").textContent=Math.floor(totals.south);
   document.getElementById("totalEast").textContent=Math.floor(totals.east);
   document.getElementById("totalWest").textContent=Math.floor(totals.west);
 
-  document.getElementById("northRate").textContent=(n*globalMultiplier).toFixed(2);
-  document.getElementById("southRate").textContent=(s*globalMultiplier).toFixed(2);
-  document.getElementById("eastRate").textContent=(e*globalMultiplier).toFixed(2);
-  document.getElementById("westRate").textContent=(w*globalMultiplier).toFixed(2);
+  const t=(performance.now()-startTime)/1000;
+  document.getElementById("timer").textContent=t.toFixed(1);
 }
 
-// -------- CANVAS ----------
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+/* ================= EVENTS ================= */
 
-  ctx.beginPath();
-  ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
-  ctx.stroke();
+document.getElementById("dailyBtn").onclick=()=>{
+  const seed = Date.now();
+  prepareGame(seed);
+};
 
-  const px=center.x + x*(radius-5);
-  const py=center.y - y*(radius-5);
+document.getElementById("randomBtn").onclick=()=>{
+  prepareGame(Math.random()*999999);
+};
 
-  ctx.beginPath();
-  ctx.arc(px,py,6,0,Math.PI*2);
-  ctx.fill();
-}
+document.getElementById("startBtn").onclick=startGame;
 
-canvas.addEventListener("click",(e)=>{
-  if(!running) return;
-
-  const rect=canvas
+</script>
+</body>
+</html>
