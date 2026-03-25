@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Idle K</title>
+<title>KrazyPlace — Idle K</title>
 
 <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
 
@@ -16,13 +16,15 @@ main { flex:1; }
   margin:auto;
 }
 
-#gameArea, #preGame {
-  display:none;
-}
+#gameArea, #preGame { display:none; }
 
 button:disabled {
   opacity:0.4;
   cursor:not-allowed;
+}
+canvas {
+  border:1px solid var(--surface-3);
+  border-radius:50%;
 }
 </style>
 </head>
@@ -64,22 +66,41 @@ button:disabled {
 
 <p>Temps : <span id="timer">0</span>s</p>
 
+<table>
+<tr>
+<td>Nord: <span id="totalNorth">0</span></td>
+<td>Sud: <span id="totalSouth">0</span></td>
+<td>Est: <span id="totalEast">0</span></td>
+<td>Ouest: <span id="totalWest">0</span></td>
+</tr>
+</table>
+
+<canvas id="controlCanvas" width="300" height="300"></canvas>
+
 <p>
-Nord: <span id="totalNorth">0</span> |
-Sud: <span id="totalSouth">0</span> |
-Est: <span id="totalEast">0</span> |
-Ouest: <span id="totalWest">0</span>
+Nord : <span id="northRate"></span> |
+Sud : <span id="southRate"></span> |
+Est : <span id="eastRate"></span> |
+Ouest : <span id="westRate"></span>
 </p>
 
+<h3>Missions</h3>
 <table>
 <tbody id="missionsBody"></tbody>
 </table>
+
+<div id="endBox" style="display:none;">
+<h2>Fin</h2>
+<p>Temps : <span id="finalTime"></span></p>
+<p>Runes gaspillées : <span id="wastedRunes"></span></p>
+</div>
 
 </div>
 
 </main>
 
 <script>
+// -------- RNG ----------
 function pseudoRandom(seed){
   let s = seed;
   return () => {
@@ -90,32 +111,55 @@ function pseudoRandom(seed){
 
 let rng;
 let goals = {};
-let totals;
+let totals = {};
 let missions = [];
+let globalMultiplier = 1;
+
 let running = false;
 let startTime;
+let lastUpdate = 0;
 
-// -------- INIT GAME (SANS LANCER) ----------
+let x=0,y=0,pointLocked=true;
+
+// -------- CANVAS ----------
+const canvas = document.getElementById("controlCanvas");
+const ctx = canvas.getContext("2d");
+const radius = canvas.width/2;
+const center = {x:radius,y:radius};
+
+const directions = [
+  { name:"Nord", x:0, y:1 },
+  { name:"Nord-Est", x:0.707, y:0.707 },
+  { name:"Est", x:1, y:0 },
+  { name:"Sud-Est", x:0.707, y:-0.707 },
+  { name:"Sud", x:0, y:-1 },
+  { name:"Sud-Ouest", x:-0.707, y:-0.707 },
+  { name:"Ouest", x:-1, y:0 },
+  { name:"Nord-Ouest", x:-0.707, y:0.707 }
+];
+
+// -------- SETUP ONLY ----------
 function setupGame(seed){
   rng = pseudoRandom(seed);
 
-  const totalGoal = 1200 + Math.floor(rng()*400);
+  const totalGoal = 1200 + Math.floor(rng()*401);
   let parts = [rng(),rng(),rng(),rng()];
   let sum = parts.reduce((a,b)=>a+b,0);
 
-  goals = {
-    north: Math.floor(parts[0]/sum*totalGoal),
-    south: Math.floor(parts[1]/sum*totalGoal),
-    east:  Math.floor(parts[2]/sum*totalGoal)
-  };
-  goals.west = totalGoal - goals.north - goals.south - goals.east;
+  goals.north = Math.floor(parts[0]/sum*totalGoal);
+  goals.south = Math.floor(parts[1]/sum*totalGoal);
+  goals.east  = Math.floor(parts[2]/sum*totalGoal);
+  goals.west  = totalGoal - goals.north - goals.south - goals.east;
 
+  generateMissions();
+
+  // preview
   document.getElementById("goalNorth").textContent = goals.north;
   document.getElementById("goalSouth").textContent = goals.south;
   document.getElementById("goalEast").textContent  = goals.east;
   document.getElementById("goalWest").textContent  = goals.west;
 
-  generateMissionsPreview();
+  renderPreview();
 
   document.getElementById("menu").style.display="none";
   document.getElementById("preGame").style.display="block";
@@ -123,7 +167,8 @@ function setupGame(seed){
 
 // -------- START GAME ----------
 function startGame(){
-  totals = { north:0,south:0,east:0,west:0 };
+  totals = {north:0,south:0,east:0,west:0};
+  globalMultiplier = 1;
 
   document.getElementById("preGame").style.display="none";
   document.getElementById("gameArea").style.display="block";
@@ -131,58 +176,67 @@ function startGame(){
   renderMissions();
 
   startTime = performance.now();
+  lastUpdate = performance.now();
   running = true;
 
-  loop();
+  gameLoop();
 }
 
 // -------- MISSIONS ----------
-function generateMissionsPreview(){
-  missions = [];
-  const body = document.getElementById("missionsPreview");
-  body.innerHTML="";
+function generateMissions(){
+  missions=[];
+  let pool=[...directions];
 
-  const dirs = ["Nord","Sud","Est","Ouest"];
+  for(let i=0;i<3;i++){
+    const index=Math.floor(rng()*pool.length);
+    const dir=pool.splice(index,1)[0];
 
-  dirs.slice(0,3).forEach(d=>{
     missions.push({
-      name:d,
+      direction:dir,
       progress:0,
       completed:false,
       boosted:false
     });
+  }
+}
 
-    body.innerHTML += `<tr><td>${d}</td><td>Atteindre 100%</td></tr>`;
+function renderPreview(){
+  const body=document.getElementById("missionsPreview");
+  body.innerHTML="";
+  missions.forEach(m=>{
+    body.innerHTML += `<tr><td>${m.direction.name}</td><td>Orientation requise</td></tr>`;
   });
 }
 
 function renderMissions(){
-  const body = document.getElementById("missionsBody");
+  const body=document.getElementById("missionsBody");
   body.innerHTML="";
 
   missions.forEach((m,i)=>{
-    body.innerHTML += `
+    body.innerHTML+=`
     <tr>
-      <td>${m.name}</td>
-      <td><span id="prog${i}">0%</span></td>
+      <td>${m.direction.name}</td>
+      <td>
+        <progress id="mission${i}" value="0" max="100"></progress>
+      </td>
       <td>
         <button id="boost${i}" disabled>
-          Acheter boost (50 runes)
+          50 runes de chaque
         </button>
       </td>
     </tr>`;
   });
 }
 
-// -------- LOGIQUE BOUTON ----------
+// -------- BOOST ----------
 function updateButtons(){
   missions.forEach((m,i)=>{
-    const btn = document.getElementById("boost"+i);
+    const btn=document.getElementById("boost"+i);
     if(!btn) return;
 
     if(m.boosted){
-      btn.textContent = "Acheté";
-      btn.disabled = true;
+      btn.textContent="Acheté";
+      btn.disabled=true;
       return;
     }
 
@@ -192,17 +246,19 @@ function updateButtons(){
       totals.east>=50 &&
       totals.west>=50;
 
-    btn.disabled = !canBuy;
+    btn.disabled = !(canBuy && m.completed);
 
-    btn.onclick = ()=>{
-      if(!canBuy) return;
+    btn.onclick=()=>{
+      if(!canBuy || !m.completed) return;
 
       totals.north-=50;
       totals.south-=50;
       totals.east-=50;
       totals.west-=50;
 
-      m.boosted = true;
+      globalMultiplier*=2;
+
+      m.boosted=true;
       btn.textContent="Acheté";
       btn.disabled=true;
     };
@@ -210,53 +266,104 @@ function updateButtons(){
 }
 
 // -------- LOOP ----------
-function loop(){
+function gameLoop(){
   if(!running) return;
 
-  let delta = 0.05;
+  const now=performance.now();
+  const delta=(now-lastUpdate)/1000;
+  lastUpdate=now;
 
-  totals.north += delta;
-  totals.south += delta;
-  totals.east  += delta;
-  totals.west  += delta;
+  let north=1+y;
+  let south=1-y;
+  let east=1+x;
+  let west=1-x;
 
-  document.getElementById("totalNorth").textContent = Math.floor(totals.north);
-  document.getElementById("totalSouth").textContent = Math.floor(totals.south);
-  document.getElementById("totalEast").textContent  = Math.floor(totals.east);
-  document.getElementById("totalWest").textContent  = Math.floor(totals.west);
+  totals.north += north*globalMultiplier*delta;
+  totals.south += south*globalMultiplier*delta;
+  totals.east  += east *globalMultiplier*delta;
+  totals.west  += west *globalMultiplier*delta;
 
-  missions.forEach((m,i)=>{
-    if(!m.completed){
-      m.progress += 0.5;
-      if(m.progress>=100){
-        m.progress=100;
-        m.completed=true;
-      }
-      document.getElementById("prog"+i).textContent = Math.floor(m.progress)+"%";
-    }
-  });
-
+  updateUI(north,south,east,west);
+  updateMissions();
   updateButtons();
 
-  const t = (performance.now()-startTime)/1000;
-  document.getElementById("timer").textContent = t.toFixed(1);
+  const elapsed=(now-startTime)/1000;
+  document.getElementById("timer").textContent=elapsed.toFixed(1);
 
-  requestAnimationFrame(loop);
+  if(
+    totals.north>=goals.north &&
+    totals.south>=goals.south &&
+    totals.east>=goals.east &&
+    totals.west>=goals.west
+  ){
+    running=false;
+
+    document.getElementById("finalTime").textContent=elapsed.toFixed(2);
+
+    const wasted =
+      Math.max(0,totals.north-goals.north)+
+      Math.max(0,totals.south-goals.south)+
+      Math.max(0,totals.east-goals.east)+
+      Math.max(0,totals.west-goals.west);
+
+    document.getElementById("wastedRunes").textContent=Math.floor(wasted);
+    document.getElementById("endBox").style.display="block";
+    return;
+  }
+
+  draw();
+  requestAnimationFrame(gameLoop);
 }
 
-// -------- EVENTS ----------
-document.getElementById("dailyBtn").onclick=()=>{
-  const seed = Date.now();
-  setupGame(seed);
-};
+// -------- MISSIONS UPDATE ----------
+function updateMissions(){
+  missions.forEach((m,i)=>{
+    if(m.completed) return;
 
-document.getElementById("randomBtn").onclick=()=>{
-  setupGame(Math.random()*999999);
-};
+    const dot=(x*m.direction.x + y*m.direction.y);
+    const factor=Math.max(0,dot);
 
-document.getElementById("startBtn").onclick=startGame;
+    m.progress += factor*0.1;
 
-</script>
+    if(m.progress>=100){
+      m.progress=100;
+      m.completed=true;
+    }
 
-</body>
-</html>
+    document.getElementById("mission"+i).value=m.progress;
+  });
+}
+
+// -------- UI ----------
+function updateUI(n,s,e,w){
+  document.getElementById("totalNorth").textContent=Math.floor(totals.north);
+  document.getElementById("totalSouth").textContent=Math.floor(totals.south);
+  document.getElementById("totalEast").textContent=Math.floor(totals.east);
+  document.getElementById("totalWest").textContent=Math.floor(totals.west);
+
+  document.getElementById("northRate").textContent=(n*globalMultiplier).toFixed(2);
+  document.getElementById("southRate").textContent=(s*globalMultiplier).toFixed(2);
+  document.getElementById("eastRate").textContent=(e*globalMultiplier).toFixed(2);
+  document.getElementById("westRate").textContent=(w*globalMultiplier).toFixed(2);
+}
+
+// -------- CANVAS ----------
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.beginPath();
+  ctx.arc(center.x,center.y,radius-5,0,Math.PI*2);
+  ctx.stroke();
+
+  const px=center.x + x*(radius-5);
+  const py=center.y - y*(radius-5);
+
+  ctx.beginPath();
+  ctx.arc(px,py,6,0,Math.PI*2);
+  ctx.fill();
+}
+
+canvas.addEventListener("click",(e)=>{
+  if(!running) return;
+
+  const rect=canvas
