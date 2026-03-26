@@ -376,9 +376,12 @@ function tryBoost(i){
     totals.west  -= 50;
 
     globalMultiplier *= 2;
-
+    
     m.boosted = true;
-    document.getElementById("boost"+i).disabled = true;
+
+    const btn = document.getElementById("boost"+i);
+    btn.disabled = true;
+    btn.textContent = "Bonus activé (x2)";
   }
 }
 
