@@ -34,6 +34,20 @@ footer {
   border-top: 1px solid var(--surface-3);
   padding-top: 1rem;
 }
+  .bar-container {
+  height: 20px;
+  background: #eee;
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: #4caf50;
+  width: 0%;
+  transition: width 0.3s;
+}
+
 </style>
 </head>
 <body>
@@ -68,15 +82,56 @@ footer {
 <th>Rune</th>
 <th>Objectif</th>
 <th>Actuel</th>
+<th>Progression</th>
 </tr>
 </thead>
 <tbody>
-<tr><td>Nord</td><td id="goalNorth"></td><td id="totalNorth">0</td></tr>
-<tr><td>Sud</td><td id="goalSouth"></td><td id="totalSouth">0</td></tr>
-<tr><td>Est</td><td id="goalEast"></td><td id="totalEast">0</td></tr>
-<tr><td>Ouest</td><td id="goalWest"></td><td id="totalWest">0</td></tr>
+<tr>
+<td>Nord</td>
+<td id="goalNorth"></td>
+<td id="totalNorth">0</td>
+<td>
+  <div class="bar-container">
+    <div class="bar-fill" id="barNorth"></div>
+  </div>
+</td>
+</tr>
+
+<tr>
+<td>Sud</td>
+<td id="goalSouth"></td>
+<td id="totalSouth">0</td>
+<td>
+  <div class="bar-container">
+    <div class="bar-fill" id="barSouth"></div>
+  </div>
+</td>
+</tr>
+
+<tr>
+<td>Est</td>
+<td id="goalEast"></td>
+<td id="totalEast">0</td>
+<td>
+  <div class="bar-container">
+    <div class="bar-fill" id="barEast"></div>
+  </div>
+</td>
+</tr>
+
+<tr>
+<td>Ouest</td>
+<td id="goalWest"></td>
+<td id="totalWest">0</td>
+<td>
+  <div class="bar-container">
+    <div class="bar-fill" id="barWest"></div>
+  </div>
+</td>
+</tr>
 </tbody>
 </table>
+
 
 <p>Temps écoulé : <strong id="timer">0.0</strong>s</p>
 
@@ -185,6 +240,8 @@ function startGame(seed){
   document.getElementById("goalEast").textContent  = goals.east;
   document.getElementById("goalWest").textContent  = goals.west;
 
+  updateProgressBars();
+
   generateMissions();
 
   document.getElementById("timer").textContent = "0.0";
@@ -269,6 +326,40 @@ function updateMissions(){
   });
 }
 
+function updateProgressBars(){
+  const maxGoal = Math.max(
+    goals.north,
+    goals.south,
+    goals.east,
+    goals.west
+  );
+
+  const config = [
+    { key: "north", bar: "barNorth", container: "containerNorth" },
+    { key: "south", bar: "barSouth", container: "containerSouth" },
+    { key: "east",  bar: "barEast",  container: "containerEast" },
+    { key: "west",  bar: "barWest",  container: "containerWest" }
+  ];
+
+  config.forEach(c => {
+    const goal = goals[c.key];
+    const total = totals[c.key];
+
+    const container = document.getElementById(c.container);
+    const bar = document.getElementById(c.bar);
+
+    if(!goal || !container || !bar) return;
+
+    // largeur relative à l'objectif (comparaison entre lignes)
+    const relativeWidth = (goal / maxGoal) * 100;
+    container.style.width = relativeWidth + "%";
+
+    // progression interne
+    const progress = Math.min(total / goal, 1) * 100;
+    bar.style.width = progress + "%";
+  });
+}
+
 function tryBoost(i){
   const m = missions[i];
   if(m.boosted) return;
@@ -315,6 +406,7 @@ function gameLoop(){
   totals.west  += (west*globalMultiplier)*delta;
 
   updateTotals();
+  updateProgressBars();
   updateRates(north,south,east,west);
   updateMissions();
 
