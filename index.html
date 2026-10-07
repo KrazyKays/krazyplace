@@ -100,13 +100,17 @@
               <span id="darts-left" class="darts-left"></span>
             </div>
 
-            <div class="input-fields">
-              <label class="field-label" for="points-input">Points de la fléchette</label>
-              <input id="points-input" class="control points-input" type="number" min="0" max="60" step="1" inputmode="numeric" value="0" aria-describedby="points-help">
-              <p id="points-help" class="input-help">Entre 0 et 60. Pour Double in/out, cochez la case si ce lancer est un double.</p>
-              <label class="check-option dart-double-option"><input id="dart-is-double" type="checkbox"> <span><strong>Ce lancer est un double</strong><small>À cocher uniquement pour un double (2 à 40, ou bull intérieur 50).</small></span></label>
+            <div class="dart-entry">
+              <span class="field-label">Multiplicateur</span>
+              <div id="multiplier-buttons" class="multiplier-buttons" role="group" aria-label="Choisir le multiplicateur">
+                <button class="multiplier-button active" type="button" data-multiplier="1" aria-pressed="true">Simple</button>
+                <button class="multiplier-button" type="button" data-multiplier="2" aria-pressed="false">Double</button>
+                <button class="multiplier-button" type="button" data-multiplier="3" aria-pressed="false">Triple</button>
+              </div>
+              <p id="dart-entry-help" class="input-help">Choisissez Simple, Double ou Triple pour les secteurs 1 à 20, puis touchez une cible. Bull 25 et Bull 50 gardent leur valeur. Chaque clic valide une fléchette ; le multiplicateur reste actif.</p>
+              <span class="field-label target-label">Cible</span>
+              <div id="dart-buttons" class="dart-buttons" role="group" aria-label="Choisir une cible de fléchette"></div>
             </div>
-            <button id="throw-button" class="primary-button throw-button" type="button">Valider la fléchette <span aria-hidden="true">→</span></button>
             <div class="throw-actions">
               <button id="undo-button" class="secondary-button" type="button">↶ Annuler le lancer</button>
               <button id="end-turn-button" class="secondary-button" type="button">Terminer la volée</button>
