@@ -343,6 +343,133 @@ function renderScoreboard() {
   scoreboard.append(cards);
 }
 
+function createResultImage() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1200;
+  canvas.height = 630;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Impossible de créer l’image du résultat.");
+
+  const winner = game.players.find((player) => player.id === game.winner);
+  const isCricket = game.mode === "cricket";
+  const modeLabel = isCricket ? "CRICKET" : `${game.mode} · ${[
+    game.doubleIn ? "DOUBLE IN" : "",
+    game.doubleOut ? "DOUBLE OUT" : "",
+  ].filter(Boolean).join(" · ") || "CLASSIQUE"}`;
+  const gradient = context.createLinearGradient(0, 0, 1200, 630);
+  gradient.addColorStop(0, "#0b1018");
+  gradient.addColorStop(1, "#14283a");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.fillStyle = "#55d6ff";
+  context.beginPath();
+  context.arc(1080, 95, 190, 0, Math.PI * 2);
+  context.fill();
+  context.globalAlpha = 0.12;
+  context.fillStyle = "#0b1018";
+  context.beginPath();
+  context.arc(1080, 95, 142, 0, Math.PI * 2);
+  context.fill();
+  context.globalAlpha = 1;
+
+  context.fillStyle = "#55d6ff";
+  context.font = "800 24px Segoe UI, sans-serif";
+  context.textAlign = "left";
+  context.fillText("KDA  /  KRAZY DART APP", 72, 78);
+
+  context.textAlign = "center";
+  context.fillStyle = "#95a9bb";
+  context.font = "500 18px Segoe UI, sans-serif";
+  context.fillText(modeLabel, 600, 151);
+  context.fillStyle = "#eff7ff";
+  context.font = "800 54px Segoe UI, sans-serif";
+  context.fillText(winner.name, 600, 225, 1000);
+  context.fillStyle = "#55d6ff";
+  context.font = "700 25px Segoe UI, sans-serif";
+  context.fillText("REMPORTE LA PARTIE", 600, 270);
+
+  const columns = game.players.length > 4 ? 2 : 1;
+  const rowsPerColumn = Math.ceil(game.players.length / columns);
+  const rowHeight = Math.min(48, 192 / rowsPerColumn);
+  const gridTop = 326;
+  const columnWidth = columns === 1 ? 680 : 460;
+  const gridLeft = (1200 - columns * columnWidth - (columns - 1) * 24) / 2;
+
+  game.players.forEach((player, index) => {
+    const column = Math.floor(index / rowsPerColumn);
+    const row = index % rowsPerColumn;
+    const x = gridLeft + column * (columnWidth + 24);
+    const y = gridTop + row * (rowHeight + 10);
+    const isWinner = player.id === game.winner;
+    context.fillStyle = isWinner ? "rgba(85, 214, 255, 0.14)" : "rgba(255, 255, 255, 0.06)";
+    context.beginPath();
+    context.roundRect(x, y, columnWidth, rowHeight, 10);
+    context.fill();
+    context.textAlign = "left";
+    context.fillStyle = isWinner ? "#55d6ff" : "#eff7ff";
+    context.font = "600 18px Segoe UI, sans-serif";
+    context.fillText(player.name, x + 18, y + rowHeight / 2 + 6, columnWidth - 115);
+    context.textAlign = "right";
+    context.fillStyle = "#eff7ff";
+    context.font = "700 21px Segoe UI, sans-serif";
+    context.fillText(String(player.score), x + columnWidth - 18, y + rowHeight / 2 + 7);
+  });
+
+  context.textAlign = "center";
+  context.fillStyle = "#71869a";
+  context.font = "500 14px Segoe UI, sans-serif";
+  context.fillText("KRAZY DART APP  ·  BON JEU !", 600, 594);
+  return canvas;
+}
+
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Le navigateur n’a pas pu générer l’image."));
+    }, "image/png");
+  });
+}
+
+async function shareResult() {
+  const button = document.querySelector("#share-button");
+  const message = document.querySelector("#game-message");
+  button.disabled = true;
+  message.classList.remove("warning");
+  message.textContent = "Préparation de l’image…";
+
+  try {
+    const canvas = createResultImage();
+    const blob = await canvasToBlob(canvas);
+    const file = new File([blob], "krazy-dart-app-resultat.png", { type: "image/png" });
+
+    if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+      await navigator.share({ title: "Résultat — Krazy Dart App", files: [file] });
+      message.textContent = "Image partagée. Bien joué !";
+    } else {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.name;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      message.textContent = "Image téléchargée. Vous pouvez maintenant la partager.";
+    }
+  } catch (error) {
+    if (error.name === "AbortError") {
+      message.textContent = "Partage annulé.";
+    } else {
+      message.textContent = error.message || "Impossible de générer ou partager l’image.";
+      message.classList.add("warning");
+    }
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function renderGame() {
   if (!game) return;
   const current = activePlayer();
@@ -367,6 +494,8 @@ function renderGame() {
   const winnerBanner = document.querySelector("#winner-banner");
   winnerBanner.hidden = !game.winner;
   if (game.winner) winnerBanner.textContent = `🏆 ${game.players.find((player) => player.id === game.winner).name} remporte la partie !`;
+  document.querySelector("#share-button").hidden = !game.winner;
+  document.querySelector("#share-help").hidden = !game.winner;
 
   const logList = document.querySelector("#log-list");
   logList.replaceChildren();
@@ -412,6 +541,7 @@ document.querySelector("#add-player").addEventListener("click", () => addPlayerF
 document.querySelector("#game-mode").addEventListener("change", updateModeOptions);
 segmentSelect.addEventListener("change", updateMultiplier);
 document.querySelector("#throw-button").addEventListener("click", throwDart);
+document.querySelector("#share-button").addEventListener("click", shareResult);
 document.querySelector("#end-turn-button").addEventListener("click", finishVisit);
 document.querySelector("#back-button").addEventListener("click", () => {
   game = null;

@@ -58,10 +58,10 @@
           <p class="privacy-note">Aucun compte, aucune donnée envoyée. La partie reste dans cet onglet.</p>
         </form>
 
-        <div class="mode-notes" aria-label="Modes disponibles">
+        <div class="mode-notes" aria-label="Modes et fonctions disponibles">
           <div><span class="mode-number">01</span><span><strong>301 / 501</strong><small>Double in/out au choix</small></span></div>
           <div><span class="mode-number">02</span><span><strong>Cricket</strong><small>Fermez du 15 au bull</small></span></div>
-          <div><span class="mode-number">03</span><span><strong>Undo</strong><small>Une erreur ? Annulez.</small></span></div>
+          <div><span class="mode-number">↶</span><span><strong>Annulation</strong><small>Annulez le dernier lancer.</small></span></div>
         </div>
       </section>
 
@@ -123,6 +123,8 @@
               <button id="undo-button" class="secondary-button" type="button">↶ Annuler le lancer</button>
               <button id="end-turn-button" class="secondary-button" type="button">Terminer la volée</button>
             </div>
+            <button id="share-button" class="primary-button share-button" type="button" hidden>Partager le résultat <span aria-hidden="true">↗</span></button>
+            <p id="share-help" class="privacy-note share-help" hidden>Image PNG : partage direct si disponible, sinon téléchargement.</p>
             <p id="game-message" class="game-message" role="status" aria-live="polite"></p>
           </section>
         </div>
