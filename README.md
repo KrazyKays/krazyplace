@@ -13,7 +13,7 @@ Application web statique, légère et en français pour compter les points aux f
 - Les fiches de score affichent les fléchettes de la dernière volée séparément, ainsi que leur total.
 - À la fin d'une partie, génération locale d'une image PNG des scores et statistiques (ratés, dépassements, moyenne des touches, meilleures volées, volées de 100+ et doubles), partageable via le navigateur ou téléchargeable.
 
-La moyenne est le score moyen des fléchettes non nulles. Les dépassements comptent les lancers qui font passer sous zéro ; les busts incluent également les fins à zéro sans double lorsque double out est activé.
+La moyenne est le score moyen des fléchettes non nulles. Les dépassements comptent les lancers qui font passer sous zéro ; les busts incluent également les scores restants de 1 et les fins à zéro sans double lorsque double out est activé.
 
 ## Lancer en local
 

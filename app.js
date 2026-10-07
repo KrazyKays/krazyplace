@@ -1,11 +1,11 @@
-const setupScreen = document.querySelector("#setup-screen");
-const gameScreen = document.querySelector("#game-screen");
-const setupForm = document.querySelector("#setup-form");
-const modeSelect = document.querySelector("#game-mode");
-const playerList = document.querySelector("#player-list");
-const playerCount = document.querySelector("#player-count");
-const multiplierButtons = document.querySelector("#multiplier-buttons");
-const dartButtons = document.querySelector("#dart-buttons");
+const setupScreen = typeof document !== "undefined" ? document.querySelector("#setup-screen") : null;
+const gameScreen = typeof document !== "undefined" ? document.querySelector("#game-screen") : null;
+const setupForm = typeof document !== "undefined" ? document.querySelector("#setup-form") : null;
+const modeSelect = typeof document !== "undefined" ? document.querySelector("#game-mode") : null;
+const playerList = typeof document !== "undefined" ? document.querySelector("#player-list") : null;
+const playerCount = typeof document !== "undefined" ? document.querySelector("#player-count") : null;
+const multiplierButtons = typeof document !== "undefined" ? document.querySelector("#multiplier-buttons") : null;
+const dartButtons = typeof document !== "undefined" ? document.querySelector("#dart-buttons") : null;
 const history = [];
 
 let game = null;
@@ -40,6 +40,7 @@ function createDartButtons() {
 
 function setMultiplier(multiplier) {
   selectedMultiplier = multiplier;
+  if (!multiplierButtons) return;
   for (const button of multiplierButtons.querySelectorAll("[data-multiplier]")) {
     const isSelected = Number(button.dataset.multiplier) === multiplier;
     button.classList.toggle("active", isSelected);
@@ -91,6 +92,7 @@ function updatePlayerFields() {
 }
 
 function updateRulesSummary() {
+  if (typeof document === "undefined" || !modeSelect) return;
   const startRule = document.querySelector("#double-in").checked
     ? "Il faut d’abord toucher un double pour commencer à marquer."
     : "Chaque fléchette marque dès le premier lancer.";
@@ -99,7 +101,7 @@ function updateRulesSummary() {
     ? "Finissez à exactement 0 avec un double."
     : "Finissez à exactement 0 ; le dernier lancer n’a pas besoin d’être un double.";
   const bustRule = doubleOut
-    ? "Un dépassement ou un 0 sans double annule la volée."
+    ? "Un dépassement, un score de 1 ou un 0 sans double annule la volée."
     : "Un dépassement annule la volée.";
 
   document.querySelector("#rules-summary-text").textContent =
@@ -225,20 +227,32 @@ function registerDart(target) {
   if (player.opened) player.score -= points;
   game.visitScore += wasOpen || player.opened ? points : 0;
 
-  const isBust = player.score < 0 || (game.doubleOut && player.score === 0 && !isDouble);
+  const isBust = player.score < 0 || (game.doubleOut && (player.score === 1 || (player.score === 0 && !isDouble)));
   if (isBust) {
     const isOvershoot = player.score < 0;
+    const isScoreOne = game.doubleOut && player.score === 1;
     player.stats.busts += 1;
     player.stats.bustDarts += game.dartsInVisit;
     if (isOvershoot) player.stats.overshoots += 1;
     player.score = game.visitStartScore;
     player.opened = game.visitStartOpen;
     recordVisit(player, 0, true);
-    addLog(`${player.name} — ${isOvershoot ? "dépassement" : "sortie sans double"}`, 0);
+    addLog(
+      `${player.name} — ${
+        isOvershoot
+          ? "dépassement"
+          : isScoreOne
+            ? "reste 1 pt (double out)"
+            : "sortie sans double"
+      }`,
+      0,
+    );
     endVisit(
       isOvershoot
         ? "Dépassement ! La volée est annulée et le score revient au début du tour."
-        : "Il faut finir sur un double. La volée est annulée et le score revient au début du tour.",
+        : isScoreOne
+          ? "Score restant de 1 impossible avec double out. La volée est annulée et le score revient au début du tour."
+          : "Il faut finir sur un double. La volée est annulée et le score revient au début du tour.",
       "warning",
     );
     renderGame();
@@ -490,7 +504,7 @@ async function shareResult() {
 }
 
 function renderGame() {
-  if (!game) return;
+  if (!game || typeof document === "undefined") return;
   const current = activePlayer();
   document.querySelector("#game-mode-label").textContent = `MODE ${game.mode}`;
   document.querySelector("#game-title").textContent = game.mode;
@@ -555,35 +569,60 @@ function startGame(event) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-document.querySelector("#add-player").addEventListener("click", () => addPlayerField());
-document.querySelector("#game-mode").addEventListener("change", updateRulesSummary);
-document.querySelector("#double-in").addEventListener("change", updateRulesSummary);
-document.querySelector("#double-out").addEventListener("change", updateRulesSummary);
-multiplierButtons.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-multiplier]");
-  if (button && !button.disabled) setMultiplier(Number(button.dataset.multiplier));
-});
-dartButtons.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-target]");
-  if (button && !button.disabled) registerDart(button.dataset.target);
-});
-document.querySelector("#end-turn-button").addEventListener("click", finishVisit);
-document.querySelector("#back-button").addEventListener("click", () => {
-  game = null;
-  history.length = 0;
-  setupScreen.hidden = false;
-  gameScreen.hidden = true;
-});
-document.querySelector("#undo-button").addEventListener("click", () => {
-  if (history.length === 0) return;
-  game = history.pop();
-  renderGame();
-});
-document.querySelector("#share-button").addEventListener("click", shareResult);
-setupForm.addEventListener("submit", startGame);
+if (typeof document !== "undefined") {
+  document.querySelector("#add-player").addEventListener("click", () => addPlayerField());
+  document.querySelector("#game-mode").addEventListener("change", updateRulesSummary);
+  document.querySelector("#double-in").addEventListener("change", updateRulesSummary);
+  document.querySelector("#double-out").addEventListener("change", updateRulesSummary);
+  multiplierButtons.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-multiplier]");
+    if (button && !button.disabled) setMultiplier(Number(button.dataset.multiplier));
+  });
+  dartButtons.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-target]");
+    if (button && !button.disabled) registerDart(button.dataset.target);
+  });
+  document.querySelector("#end-turn-button").addEventListener("click", finishVisit);
+  document.querySelector("#back-button").addEventListener("click", () => {
+    game = null;
+    history.length = 0;
+    setupScreen.hidden = false;
+    gameScreen.hidden = true;
+  });
+  document.querySelector("#undo-button").addEventListener("click", () => {
+    if (history.length === 0) return;
+    game = history.pop();
+    renderGame();
+  });
+  document.querySelector("#share-button").addEventListener("click", shareResult);
+  setupForm.addEventListener("submit", startGame);
 
-addPlayerField("Joueur 1");
-addPlayerField("Joueur 2");
-createDartButtons();
-setMultiplier(selectedMultiplier);
-updateRulesSummary();
+  addPlayerField("Joueur 1");
+  addPlayerField("Joueur 2");
+  createDartButtons();
+  setMultiplier(selectedMultiplier);
+  updateRulesSummary();
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    createGame,
+    cloneGame,
+    registerDart,
+    finishVisit,
+    setMultiplier,
+    getGame: () => game,
+    setGame: (g) => {
+      game = g;
+    },
+    getHistory: () => history,
+    clearHistory: () => {
+      history.length = 0;
+    },
+    undo: () => {
+      if (history.length === 0) return;
+      game = history.pop();
+      renderGame();
+    },
+  };
+}
