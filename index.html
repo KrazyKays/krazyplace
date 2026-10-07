@@ -1,87 +1,133 @@
 <!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>KrazyPlace</title>
-  <!-- Utilise la version 'latest' de Pico via unpkg : léger et sans build -->
-  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-    body {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-    main {
-      flex: 1; /* pousse le footer vers le bas */
-    }
-    /* Petites personnalisations sans alourdir */
-    .hero {
-      padding: 1rem 1rem;
-      text-align: center;
-    }
-    .container-narrow {
-      max-width: 900px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .logo a {
-      color: lightblue;
-    }
-    footer {
-      margin-top: 3rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid var(--surface-3);
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-  <header class="container container-narrow">
-    <nav>
-      <ul>
-        <li class="logo"><a href="#">KrazyPlace</a></li>
-        <li><a href="/krazyplace/pages/kgame/game.html">KGame</a></li>
-        <li><a href="/krazyplace/pages/bossbattle/game.html">Boss battle</a></li>
-        <li><a href="/krazyplace/pages/spellcraft/game.html">Spell craft</a></li>
-        <li><a href="/krazyplace/pages/ktyping/game.html">K typing</a></li>
-        <li><a href="/krazyplace/pages/idlek/game.html">Idle K</a></li>
-      </ul>
-    </nav>
-  </header>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1018">
+    <meta name="description" content="Krazy Dart App (KDA), un compteur de points aux fléchettes simple, rapide et gratuit.">
+    <title>Krazy Dart App — KDA</title>
+    <link rel="stylesheet" href="./app.css">
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Krazy Dart App, accueil">
+        <span class="brand-mark" aria-hidden="true">KDA</span>
+        <span>Krazy Dart App<span class="brand-period">.</span></span>
+      </a>
+      <span class="topbar-note"><span class="online-dot"></span> KDA · COMPTEUR LOCAL</span>
+    </header>
 
-  <main class="container container-narrow">
-    <section class="hero">
-      <hgroup>
-        <h1>KrazyPlace — Spawn</h1>
-        <p class="lead">Bienvenue quelque part.</p>
-      </hgroup>
-    </section>
+    <main>
+      <section id="setup-screen" class="screen setup-screen">
+        <div class="intro">
+          <p class="eyebrow">LE COMPTEUR QUI NE RATE PAS SA CIBLE</p>
+          <h1>À vous<br>de <span>viser juste.</span></h1>
+          <p class="intro-copy">Choisissez votre partie, entrez les joueurs et laissez le comptage aux fléchettes.</p>
+        </div>
 
-    <section id="features">
-      <h2>C'est quoi ce site ?</h2>
-      <ul>
-        <li>Je sais pas.</li>
-        <li>Tu sais pas.</li>
-        <li>personne ne sait.</li>
-      </ul>
-    </section>
-  </main>
+        <form id="setup-form" class="setup-card">
+          <div class="card-heading">
+            <div>
+              <p class="eyebrow">NOUVELLE PARTIE</p>
+              <h2>On joue à quoi ?</h2>
+            </div>
+            <span class="heading-dart" aria-hidden="true">↗</span>
+          </div>
 
-  <footer><p>© KrazyPlace</p></footer>
+          <label class="field-label" for="game-mode">Mode de jeu</label>
+          <select id="game-mode" class="control" name="mode">
+            <option value="301">301 — classique</option>
+            <option value="501">501 — classique</option>
+            <option value="cricket">Cricket</option>
+          </select>
 
-  <!-- Petit script facultatif : bascule de thème (local) -->
-  <script>
-    // bascule simple clair/sombre (stocké en localStorage)
-    (function(){
-      const key = 'pico-theme-dark';
-      if(localStorage.getItem(key) === '1') document.documentElement.style.colorScheme = 'dark';
-      // Exposition possible via console : localStorage.setItem('pico-theme-dark','1')
-    })();
-  </script>
-</body>
+          <div id="x01-options" class="rule-options">
+            <label class="check-option"><input id="double-in" type="checkbox"> <span><strong>Double in</strong><small>La partie commence après un double.</small></span></label>
+            <label class="check-option"><input id="double-out" type="checkbox" checked> <span><strong>Double out</strong><small>Terminez exactement sur un double.</small></span></label>
+          </div>
+
+          <div class="players-heading">
+            <label class="field-label" for="player-1">Joueurs</label>
+            <span id="player-count" class="player-count">2 joueurs</span>
+          </div>
+          <div id="player-list" class="player-list"></div>
+          <button id="add-player" class="text-button" type="button">＋ Ajouter un joueur</button>
+
+          <button class="primary-button start-button" type="submit">Lancer la partie <span aria-hidden="true">↗</span></button>
+          <p class="privacy-note">Aucun compte, aucune donnée envoyée. La partie reste dans cet onglet.</p>
+        </form>
+
+        <div class="mode-notes" aria-label="Modes disponibles">
+          <div><span class="mode-number">01</span><span><strong>301 / 501</strong><small>Double in/out au choix</small></span></div>
+          <div><span class="mode-number">02</span><span><strong>Cricket</strong><small>Fermez du 15 au bull</small></span></div>
+          <div><span class="mode-number">03</span><span><strong>Undo</strong><small>Une erreur ? Annulez.</small></span></div>
+        </div>
+      </section>
+
+      <section id="game-screen" class="screen game-screen" hidden>
+        <div class="game-header">
+          <div>
+            <button id="back-button" class="back-button" type="button">← Nouvelle partie</button>
+            <p id="game-mode-label" class="eyebrow game-eyebrow"></p>
+            <h1 id="game-title">301</h1>
+          </div>
+          <div class="turn-indicator"><span class="online-dot"></span><span id="turn-label"></span></div>
+        </div>
+
+        <div class="game-layout">
+          <section class="score-panel" aria-label="Scores">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">LA PARTIE</p>
+                <h2 id="score-heading">Scores</h2>
+              </div>
+              <span id="round-label" class="round-label"></span>
+            </div>
+            <div id="scoreboard"></div>
+            <div id="cricket-board" class="cricket-board" hidden></div>
+            <div id="winner-banner" class="winner-banner" hidden></div>
+            <div id="visit-log" class="visit-log">
+              <p class="eyebrow">DERNIÈRES FLÉCHETTES</p>
+              <ol id="log-list"></ol>
+            </div>
+          </section>
+
+          <section class="throw-panel" aria-label="Saisie d'une fléchette">
+            <div class="throw-panel-heading">
+              <div>
+                <p class="eyebrow">À VOUS DE JOUER</p>
+                <h2 id="active-player-name"></h2>
+              </div>
+              <span id="darts-left" class="darts-left"></span>
+            </div>
+
+            <div id="visit-summary" class="visit-summary">
+              <span>Score de la volée</span><strong id="visit-score">0</strong>
+            </div>
+
+            <div class="input-fields">
+              <label class="field-label" for="segment-select">Secteur</label>
+              <select id="segment-select" class="control"></select>
+              <div id="multiplier-field">
+                <label class="field-label" for="multiplier-select">Valeur</label>
+                <select id="multiplier-select" class="control">
+                  <option value="1">Simple</option>
+                  <option value="2">Double</option>
+                  <option value="3">Triple</option>
+                </select>
+              </div>
+            </div>
+            <button id="throw-button" class="primary-button throw-button" type="button">Valider la fléchette <span aria-hidden="true">→</span></button>
+            <div class="throw-actions">
+              <button id="undo-button" class="secondary-button" type="button">↶ Annuler le lancer</button>
+              <button id="end-turn-button" class="secondary-button" type="button">Terminer la volée</button>
+            </div>
+            <p id="game-message" class="game-message" role="status" aria-live="polite"></p>
+          </section>
+        </div>
+        <p class="footer-note">KDA — KRAZY DART APP</p>
+      </section>
+    </main>
+  </body>
 </html>
