@@ -4,8 +4,8 @@ const setupForm = document.querySelector("#setup-form");
 const modeSelect = document.querySelector("#game-mode");
 const playerList = document.querySelector("#player-list");
 const playerCount = document.querySelector("#player-count");
-const segmentSelect = document.querySelector("#segment-select");
-const multiplierSelect = document.querySelector("#multiplier-select");
+const pointsInput = document.querySelector("#points-input");
+const doubleInput = document.querySelector("#dart-is-double");
 const history = [];
 
 let game = null;
@@ -53,39 +53,24 @@ function updatePlayerFields() {
   });
 }
 
-function updateModeOptions() {
-  const isCricket = modeSelect.value === "cricket";
-  document.querySelector("#x01-options").hidden = isCricket;
-  document.querySelector("#visit-summary").hidden = isCricket;
-  fillSegmentOptions(isCricket);
-}
+function updateRulesSummary() {
+  const startRule = document.querySelector("#double-in").checked
+    ? "Il faut d’abord toucher un double pour commencer à marquer."
+    : "Chaque fléchette marque dès le premier lancer.";
+  const doubleOut = document.querySelector("#double-out").checked;
+  const finishRule = doubleOut
+    ? "Finissez à exactement 0 avec un double."
+    : "Finissez à exactement 0 ; le dernier lancer n’a pas besoin d’être un double.";
+  const bustRule = doubleOut
+    ? "Un dépassement ou un 0 sans double annule la volée."
+    : "Un dépassement annule la volée.";
 
-function fillSegmentOptions(isCricket) {
-  segmentSelect.replaceChildren();
-  const options = isCricket
-    ? [["miss", "Raté"], ...[20, 19, 18, 17, 16, 15].map((n) => [String(n), String(n)]), ["25", "Bull extérieur"], ["50", "Bull intérieur"]]
-    : [["0", "Raté (0)"], ...Array.from({ length: 20 }, (_, i) => [String(i + 1), `Secteur ${i + 1}`]), ["25", "Bull extérieur (25)"], ["50", "Bull intérieur (50)"]];
-
-  for (const [value, label] of options) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = label;
-    segmentSelect.append(option);
-  }
-  updateMultiplier();
-}
-
-function updateMultiplier() {
-  const isCricket = (game?.mode ?? modeSelect.value) === "cricket";
-  const isBull = Number(segmentSelect.value) >= 25;
-  document.querySelector("#multiplier-field").hidden = isCricket && isBull;
-  multiplierSelect.disabled = isBull || Boolean(game?.winner);
-  if (isBull) multiplierSelect.value = "1";
+  document.querySelector("#rules-summary-text").textContent =
+    `Partez de ${modeSelect.value} points et soustrayez le score de chaque fléchette. ${startRule} ${finishRule} ${bustRule} Le score revient au début de la volée. Chaque joueur lance jusqu’à 3 fléchettes par tour.`;
 }
 
 function createGame(mode, names, rules) {
-  const isCricket = mode === "cricket";
-  const score = isCricket ? 0 : Number(mode);
+  const score = Number(mode);
   return {
     mode,
     players: names.map((name) => ({
@@ -93,7 +78,21 @@ function createGame(mode, names, rules) {
       name,
       score,
       opened: !rules.doubleIn,
-      marks: Object.fromEntries([20, 19, 18, 17, 16, 15, 25].map((target) => [target, 0])),
+      stats: {
+        darts: 0,
+        misses: 0,
+        hits: 0,
+        hitPoints: 0,
+        doubles: 0,
+        busts: 0,
+        overshoots: 0,
+        bustDarts: 0,
+        bestVisit: 0,
+        centuryVisits: 0,
+        checkouts: 0,
+        checkoutDarts: 0,
+        checkoutScore: 0,
+      },
     })),
     currentPlayer: 0,
     dartsInVisit: 0,
@@ -102,8 +101,8 @@ function createGame(mode, names, rules) {
     visitScore: 0,
     round: 1,
     winner: null,
-    doubleIn: !isCricket && rules.doubleIn,
-    doubleOut: !isCricket && rules.doubleOut,
+    doubleIn: rules.doubleIn,
+    doubleOut: rules.doubleOut,
     log: [],
     message: "",
     messageType: "",
@@ -127,6 +126,11 @@ function activePlayer() {
   return game.players[game.currentPlayer];
 }
 
+function recordVisit(player, points) {
+  player.stats.bestVisit = Math.max(player.stats.bestVisit, points);
+  if (points >= 100) player.stats.centuryVisits += 1;
+}
+
 function endVisit(message = "", messageType = "") {
   game.dartsInVisit = 0;
   game.visitStartScore = null;
@@ -140,127 +144,109 @@ function endVisit(message = "", messageType = "") {
   game.messageType = messageType;
 }
 
-function registerX01Dart() {
+function isValidDouble(points) {
+  return (points >= 2 && points <= 40 && points % 2 === 0) || points === 50;
+}
+
+function registerDart() {
+  const rawPoints = pointsInput.value.trim();
+  const points = Number(rawPoints);
+  const isDouble = doubleInput.checked;
+
+  if (rawPoints === "" || !Number.isInteger(points) || points < 0 || points > 60) {
+    showMessage("Entrez un nombre entier entre 0 et 60.", "warning");
+    pointsInput.focus();
+    return;
+  }
+  if (isDouble && !isValidDouble(points)) {
+    showMessage("Un double vaut 2 à 40 points pairs, ou 50 pour le bull intérieur.", "warning");
+    return;
+  }
+  remember();
   const player = activePlayer();
-  const segment = Number(segmentSelect.value);
-  const multiplier = Number(multiplierSelect.value);
-  const points = segment >= 25 ? segment : segment * multiplier;
-  const isDouble = multiplier === 2 || segment === 50;
   const wasOpen = player.opened;
   const wasScore = player.score;
-  const dartName = segment === 0
-    ? "Raté"
-    : segment === 25 || segment === 50
-      ? (segment === 50 ? "Bull intérieur" : "Bull extérieur")
-      : `${multiplier === 1 ? "Simple" : multiplier === 2 ? "Double" : "Triple"} ${segment}`;
+  pointsInput.value = "0";
+  doubleInput.checked = false;
 
   if (game.dartsInVisit === 0) {
     game.visitStartScore = player.score;
     game.visitStartOpen = player.opened;
   }
+
   game.dartsInVisit += 1;
+  player.stats.darts += 1;
+  if (points === 0) {
+    player.stats.misses += 1;
+  } else {
+    player.stats.hits += 1;
+    player.stats.hitPoints += points;
+    if (isDouble) player.stats.doubles += 1;
+  }
 
   if (!player.opened && isDouble) player.opened = true;
   if (player.opened) player.score -= points;
-  else game.message = "Double in : il faut toucher un double pour commencer.";
-
   game.visitScore += wasOpen || player.opened ? points : 0;
-  const isBust = player.score < 0 || (game.doubleOut && player.score === 0 && !isDouble);
 
+  const isBust = player.score < 0 || (game.doubleOut && player.score === 0 && !isDouble);
   if (isBust) {
+    const isOvershoot = player.score < 0;
+    player.stats.busts += 1;
+    player.stats.bustDarts += game.dartsInVisit;
+    if (isOvershoot) player.stats.overshoots += 1;
     player.score = game.visitStartScore;
     player.opened = game.visitStartOpen;
-    addLog(`${player.name} — bust`, 0);
-    endVisit("Bust ! Le score de la volée est annulé.", "warning");
+    recordVisit(player, 0);
+    addLog(`${player.name} — ${isOvershoot ? "dépassement" : "sortie sans double"}`, 0);
+    endVisit(
+      isOvershoot
+        ? "Dépassement ! La volée est annulée et le score revient au début du tour."
+        : "Il faut finir sur un double. La volée est annulée et le score revient au début du tour.",
+      "warning",
+    );
+    renderGame();
     return;
   }
 
   if (player.score === 0) {
+    player.stats.checkouts += 1;
+    player.stats.checkoutDarts = game.dartsInVisit;
+    player.stats.checkoutScore = game.visitStartScore;
+    recordVisit(player, game.visitStartScore);
     game.winner = player.id;
-    addLog(`${player.name} termine (${dartName})`, wasScore);
+    addLog(`${player.name} termine (${points} pts${isDouble ? ", double" : ""})`, wasScore);
     game.message = "Partie gagnée !";
     game.messageType = "";
+    renderGame();
     return;
   }
 
   if (game.dartsInVisit === 3) {
     const visitScore = game.visitStartScore - player.score;
-    addLog(`${player.name} — ${dartName} et volée terminée`, visitScore);
+    recordVisit(player, visitScore);
+    addLog(`${player.name} — volée de 3 fléchettes`, visitScore);
     endVisit();
-    return;
-  }
-
-  game.message = `${dartName} : ${points} point${points > 1 ? "s" : ""}.`;
-  game.messageType = "";
-}
-
-function cricketTargetScore(target) {
-  return target === 25 ? 25 : target;
-}
-
-function registerCricketDart() {
-  const player = activePlayer();
-  const value = segmentSelect.value;
-  const target = value === "miss" ? null : Number(value) === 50 ? 25 : Number(value);
-  const multiplier = Number(multiplierSelect.value);
-  const marks = value === "miss" ? 0 : Number(value) === 50 ? 2 : Number(value) === 25 ? 1 : multiplier;
-  const name = value === "miss"
-    ? "Raté"
-    : value === "50"
-      ? "Bull intérieur"
-      : value === "25"
-        ? "Bull extérieur"
-        : `${multiplier === 1 ? "Simple" : multiplier === 2 ? "Double" : "Triple"} ${value}`;
-  game.dartsInVisit += 1;
-
-  let points = 0;
-  if (target !== null) {
-    const before = player.marks[target];
-    const opponentsOpen = game.players.some((other) => other.id !== player.id && other.marks[target] < 3);
-    const surplusMarks = Math.max(0, before + marks - 3);
-    player.marks[target] = Math.min(3, before + marks);
-    if (opponentsOpen) points = surplusMarks * cricketTargetScore(target);
-    player.score += points;
-    game.visitScore += points;
-  }
-
-  const closedAll = Object.values(player.marks).every((count) => count >= 3);
-  const bestOpponentScore = Math.max(...game.players.filter((other) => other.id !== player.id).map((other) => other.score));
-  if (closedAll && player.score >= bestOpponentScore) {
-    game.winner = player.id;
-    addLog(`${player.name} — ${name}`, game.visitScore);
-    game.message = "Partie gagnée ! Tous les secteurs sont fermés.";
+  } else {
+    game.message = points === 0
+      ? "Raté : 0 point."
+      : `${points} point${points > 1 ? "s" : ""}${isDouble ? " (double)" : ""}.`;
     game.messageType = "";
-    return;
   }
-
-  if (game.dartsInVisit === 3) {
-    addLog(`${player.name} — volée de 3 fléchettes`, game.visitScore);
-    endVisit();
-    return;
-  }
-
-  game.message = points
-    ? `${name} : +${points} points.`
-    : target === null
-      ? "Raté. Pas de point."
-      : `${name} : ${marks} marque${marks > 1 ? "s" : ""}.`;
-  game.messageType = "";
+  renderGame();
 }
 
-function throwDart() {
-  if (!game || game.winner) return;
-  remember();
-  if (game.mode === "cricket") registerCricketDart();
-  else registerX01Dart();
-  renderGame();
+function showMessage(text, type = "") {
+  const message = document.querySelector("#game-message");
+  message.textContent = text;
+  message.classList.toggle("warning", type === "warning");
 }
 
 function finishVisit() {
   if (!game || game.winner || game.dartsInVisit === 0) return;
   remember();
   const player = activePlayer();
-  const points = game.mode === "cricket" ? game.visitScore : game.visitStartScore - player.score;
+  const points = game.visitStartScore - player.score;
+  recordVisit(player, points);
   addLog(`${player.name} — volée terminée`, points);
   endVisit("Volée terminée.");
   renderGame();
@@ -268,50 +254,7 @@ function finishVisit() {
 
 function renderScoreboard() {
   const scoreboard = document.querySelector("#scoreboard");
-  const cricketBoard = document.querySelector("#cricket-board");
   scoreboard.replaceChildren();
-  cricketBoard.replaceChildren();
-  scoreboard.hidden = game.mode === "cricket";
-  cricketBoard.hidden = game.mode !== "cricket";
-  document.querySelector("#score-heading").textContent = game.mode === "cricket" ? "Cricket" : "Scores";
-
-  if (game.mode === "cricket") {
-    const table = document.createElement("table");
-    table.className = "cricket-table";
-    const head = document.createElement("thead");
-    const headRow = document.createElement("tr");
-    for (const label of ["Cible", ...game.players.map((player) => player.name)]) {
-      const cell = document.createElement("th");
-      cell.scope = "col";
-      cell.textContent = label;
-      headRow.append(cell);
-    }
-    head.append(headRow);
-    const body = document.createElement("tbody");
-    for (const target of [20, 19, 18, 17, 16, 15, 25]) {
-      const row = document.createElement("tr");
-      const title = document.createElement("td");
-      title.className = "target-cell";
-      title.textContent = target === 25 ? "BULL" : String(target);
-      row.append(title);
-      for (const player of game.players) {
-        const cell = document.createElement("td");
-        const marks = player.marks[target];
-        cell.className = marks >= 3 ? "mark-closed" : "mark-open";
-        cell.textContent = marks >= 3 ? "×" : "•".repeat(marks) || "—";
-        cell.setAttribute("aria-label", `${player.name} : ${marks} marque${marks > 1 ? "s" : ""}`);
-        row.append(cell);
-      }
-      body.append(row);
-    }
-    table.append(head, body);
-    cricketBoard.append(table);
-    const scores = document.createElement("p");
-    scores.className = "cricket-scores";
-    scores.textContent = game.players.map((player) => `${player.name} : ${player.score}`).join("   ·   ");
-    cricketBoard.append(scores);
-    return;
-  }
 
   const cards = document.createElement("div");
   cards.className = "player-scores";
@@ -332,7 +275,7 @@ function renderScoreboard() {
     name.append(label);
     const subtitle = document.createElement("div");
     subtitle.className = "score-sub";
-    subtitle.textContent = player.opened ? "En jeu" : "En attente du double";
+    subtitle.textContent = player.opened ? "En jeu" : "En attente d’un double";
     details.append(name, subtitle);
     const score = document.createElement("strong");
     score.className = "score-value";
@@ -346,17 +289,16 @@ function renderScoreboard() {
 function createResultImage() {
   const canvas = document.createElement("canvas");
   canvas.width = 1200;
-  canvas.height = 630;
+  canvas.height = 900;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Impossible de créer l’image du résultat.");
 
   const winner = game.players.find((player) => player.id === game.winner);
-  const isCricket = game.mode === "cricket";
-  const modeLabel = isCricket ? "CRICKET" : `${game.mode} · ${[
+  const modeLabel = `${game.mode} · ${[
     game.doubleIn ? "DOUBLE IN" : "",
     game.doubleOut ? "DOUBLE OUT" : "",
   ].filter(Boolean).join(" · ") || "CLASSIQUE"}`;
-  const gradient = context.createLinearGradient(0, 0, 1200, 630);
+  const gradient = context.createLinearGradient(0, 0, 1200, 900);
   gradient.addColorStop(0, "#0b1018");
   gradient.addColorStop(1, "#14283a");
   context.fillStyle = gradient;
@@ -391,9 +333,9 @@ function createResultImage() {
 
   const columns = game.players.length > 4 ? 2 : 1;
   const rowsPerColumn = Math.ceil(game.players.length / columns);
-  const rowHeight = Math.min(48, 192 / rowsPerColumn);
-  const gridTop = 326;
-  const columnWidth = columns === 1 ? 680 : 460;
+  const rowHeight = Math.min(110, 400 / rowsPerColumn);
+  const gridTop = 354;
+  const columnWidth = columns === 1 ? 760 : 480;
   const gridLeft = (1200 - columns * columnWidth - (columns - 1) * 24) / 2;
 
   game.players.forEach((player, index) => {
@@ -406,20 +348,40 @@ function createResultImage() {
     context.beginPath();
     context.roundRect(x, y, columnWidth, rowHeight, 10);
     context.fill();
+
     context.textAlign = "left";
     context.fillStyle = isWinner ? "#55d6ff" : "#eff7ff";
     context.font = "600 18px Segoe UI, sans-serif";
-    context.fillText(player.name, x + 18, y + rowHeight / 2 + 6, columnWidth - 115);
+    context.fillText(player.name, x + 18, y + 27, columnWidth - 135);
     context.textAlign = "right";
     context.fillStyle = "#eff7ff";
     context.font = "700 21px Segoe UI, sans-serif";
-    context.fillText(String(player.score), x + columnWidth - 18, y + rowHeight / 2 + 7);
+    context.fillText(String(player.score), x + columnWidth - 18, y + 28);
+
+    const stats = player.stats;
+    const average = stats.hits ? (stats.hitPoints / stats.hits).toFixed(1) : "—";
+    const firstLine = `Lancers ${stats.darts} · Ratés ${stats.misses} · Dépassements ${stats.overshoots} · Busts ${stats.busts}`;
+    const secondLine = `Moy. par touche ${average} · Meilleure volée ${stats.bestVisit} · Volées 100+ ${stats.centuryVisits} · Doubles ${stats.doubles}`;
+
+    context.textAlign = "left";
+    context.fillStyle = "#adc0d1";
+    context.font = columns === 1 ? "14px Segoe UI, sans-serif" : "12px Segoe UI, sans-serif";
+    context.fillText(firstLine, x + 18, y + 52, columnWidth - 36);
+    context.fillText(secondLine, x + 18, y + 74, columnWidth - 36);
+    if (stats.checkouts) {
+      context.fillText(
+        `Checkout : ${stats.checkoutDarts} fléchette${stats.checkoutDarts > 1 ? "s" : ""} · ${stats.checkoutScore} points`,
+        x + 18,
+        y + 94,
+        columnWidth - 36,
+      );
+    }
   });
 
   context.textAlign = "center";
   context.fillStyle = "#71869a";
   context.font = "500 14px Segoe UI, sans-serif";
-  context.fillText("KRAZY DART APP  ·  BON JEU !", 600, 594);
+  context.fillText("KRAZY DART APP  ·  BON JEU !", 600, 872);
   return canvas;
 }
 
@@ -473,21 +435,19 @@ async function shareResult() {
 function renderGame() {
   if (!game) return;
   const current = activePlayer();
-  const isCricket = game.mode === "cricket";
-  document.querySelector("#game-mode-label").textContent = isCricket ? "MODE CRICKET" : `MODE ${game.mode}`;
-  document.querySelector("#game-title").textContent = isCricket ? "Cricket" : game.mode;
+  document.querySelector("#game-mode-label").textContent = `MODE ${game.mode}`;
+  document.querySelector("#game-title").textContent = game.mode;
   document.querySelector("#turn-label").textContent = game.winner ? "Partie terminée" : `Au tour de ${current.name}`;
   document.querySelector("#round-label").textContent = `TOUR ${game.round}`;
   document.querySelector("#active-player-name").textContent = game.winner
     ? `${game.players.find((player) => player.id === game.winner).name} a gagné`
     : current.name;
   document.querySelector("#darts-left").textContent = game.winner ? "TERMINÉ" : `${3 - game.dartsInVisit} FLÉCHETTE${3 - game.dartsInVisit > 1 ? "S" : ""}`;
-  document.querySelector("#visit-score").textContent = String(game.visitScore);
   document.querySelector("#game-message").textContent = game.message;
   document.querySelector("#game-message").classList.toggle("warning", game.messageType === "warning");
   document.querySelector("#throw-button").disabled = Boolean(game.winner);
-  document.querySelector("#segment-select").disabled = Boolean(game.winner);
-  updateMultiplier();
+  pointsInput.disabled = Boolean(game.winner);
+  doubleInput.disabled = Boolean(game.winner);
   document.querySelector("#undo-button").disabled = history.length === 0;
   document.querySelector("#end-turn-button").disabled = Boolean(game.winner || game.dartsInVisit === 0);
 
@@ -532,16 +492,22 @@ function startGame(event) {
   });
   setupScreen.hidden = true;
   gameScreen.hidden = false;
-  fillSegmentOptions(game.mode === "cricket");
   renderGame();
+  pointsInput.focus();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 document.querySelector("#add-player").addEventListener("click", () => addPlayerField());
-document.querySelector("#game-mode").addEventListener("change", updateModeOptions);
-segmentSelect.addEventListener("change", updateMultiplier);
-document.querySelector("#throw-button").addEventListener("click", throwDart);
-document.querySelector("#share-button").addEventListener("click", shareResult);
+document.querySelector("#game-mode").addEventListener("change", updateRulesSummary);
+document.querySelector("#double-in").addEventListener("change", updateRulesSummary);
+document.querySelector("#double-out").addEventListener("change", updateRulesSummary);
+document.querySelector("#throw-button").addEventListener("click", registerDart);
+pointsInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    registerDart();
+  }
+});
 document.querySelector("#end-turn-button").addEventListener("click", finishVisit);
 document.querySelector("#back-button").addEventListener("click", () => {
   game = null;
@@ -552,10 +518,14 @@ document.querySelector("#back-button").addEventListener("click", () => {
 document.querySelector("#undo-button").addEventListener("click", () => {
   if (history.length === 0) return;
   game = history.pop();
+  pointsInput.value = "0";
+  doubleInput.checked = false;
   renderGame();
+  pointsInput.focus();
 });
+document.querySelector("#share-button").addEventListener("click", shareResult);
 setupForm.addEventListener("submit", startGame);
 
 addPlayerField("Joueur 1");
 addPlayerField("Joueur 2");
-updateModeOptions();
+updateRulesSummary();

@@ -146,9 +146,12 @@ h2 { margin-bottom: 0; font-size: 21px; letter-spacing: -.8px; }
 .rule-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 13px 0 26px; }
 .check-option { min-height: 59px; display: flex; align-items: flex-start; gap: 9px; padding: 11px; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; }
 .check-option input { margin: 3px 0 0; accent-color: var(--cyan); }
-.check-option strong, .check-option small, .mode-notes strong, .mode-notes small { display: block; }
+.check-option strong, .check-option small { display: block; }
 .check-option strong { font-size: 11px; }
 .check-option small { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.rules-summary { margin: 0 0 25px; padding: 14px; border: 1px solid var(--border); border-radius: 7px; background: rgb(85 214 255 / 4%); }
+.rules-summary .eyebrow { margin-bottom: 6px; font-size: 9px; }
+.rules-summary p:last-child { margin-bottom: 0; color: #b5c6d5; font-size: 11px; line-height: 1.7; }
 .players-heading { margin: 0 0 9px; }
 .players-heading .field-label { margin: 0; }
 .player-count { color: var(--muted); font-size: 10px; }
@@ -164,12 +167,6 @@ h2 { margin-bottom: 0; font-size: 21px; letter-spacing: -.8px; }
 .start-button { width: 100%; display: flex; align-items: center; justify-content: space-between; }
 .start-button span { font-size: 18px; }
 .privacy-note { margin: 12px 0 0; color: #8598a9; font-size: 10px; text-align: center; }
-
-.mode-notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: min(100%, 590px); margin-top: 30px; }
-.mode-notes > div { display: flex; align-items: flex-start; gap: 10px; }
-.mode-number { color: var(--cyan); font-family: "DM Mono", Consolas, monospace; font-size: 10px; }
-.mode-notes strong { margin-bottom: 3px; font-size: 11px; }
-.mode-notes small { color: var(--muted); font-size: 10px; }
 
 .game-screen { padding: 42px 0 30px; }
 .game-header { margin-bottom: 24px; }
@@ -200,10 +197,11 @@ h2 { margin-bottom: 0; font-size: 21px; letter-spacing: -.8px; }
 .throw-panel-heading { align-items: flex-start; margin-bottom: 15px; }
 .throw-panel-heading h2 { max-width: 220px; overflow-wrap: anywhere; font-size: 20px; }
 .darts-left { padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px; color: var(--cyan); font-size: 10px; white-space: nowrap; }
-.visit-summary { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 12px; border-radius: 7px; background: #0d1620; color: var(--muted); font-size: 11px; }
-.visit-summary strong { color: var(--text); font-family: "DM Mono", Consolas, monospace; font-size: 19px; }
 .input-fields { display: grid; gap: 12px; }
 .input-fields .field-label { margin-bottom: 7px; }
+.points-input { min-height: 58px; font-family: "DM Mono", Consolas, monospace; font-size: 25px; font-weight: 700; }
+.input-help { margin: -5px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.dart-double-option { min-height: 0; margin-top: 2px; }
 .throw-button { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
 .throw-button span { font-size: 18px; }
 .share-button { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
@@ -216,24 +214,12 @@ h2 { margin-bottom: 0; font-size: 21px; letter-spacing: -.8px; }
 .game-message { min-height: 17px; margin: 12px 0 0; color: var(--cyan); font-size: 10px; line-height: 1.5; }
 .game-message.warning { color: var(--orange); }
 .winner-banner { margin-top: 12px; padding: 14px; border: 1px solid rgb(85 214 255 / 35%); border-radius: 8px; background: rgb(85 214 255 / 9%); color: var(--cyan); font-size: 13px; font-weight: 800; text-align: center; }
-.cricket-board { overflow-x: auto; }
-.cricket-table { width: 100%; border-collapse: collapse; }
-.cricket-table th, .cricket-table td { padding: 10px 7px; border-bottom: 1px solid var(--border); text-align: center; }
-.cricket-table th { color: var(--muted); font-size: 9px; font-weight: 600; }
-.cricket-table th:first-child, .cricket-table td:first-child { text-align: left; }
-.cricket-table td { font-family: "DM Mono", Consolas, monospace; font-size: 13px; }
-.cricket-table .target-cell { color: var(--cyan); font-weight: 500; }
-.mark-open { color: var(--muted); }
-.mark-closed { color: var(--cyan); }
 .footer-note { margin: 27px 0 0; color: #71869a; font-size: 9px; letter-spacing: 1.2px; text-align: center; }
 
 @media (max-width: 720px) {
   .topbar { height: 64px; padding: 0 20px; }
   .setup-screen { padding: 48px 0 40px; }
   .intro h1 { letter-spacing: -3px; }
-  .mode-notes { gap: 10px; }
-  .mode-notes > div { gap: 6px; }
-  .mode-notes small { font-size: 9px; }
   .game-screen { padding-top: 27px; }
   .game-layout { grid-template-columns: 1fr; }
   .throw-panel { position: static; grid-row: 1; }
@@ -245,8 +231,6 @@ h2 { margin-bottom: 0; font-size: 21px; letter-spacing: -.8px; }
   .topbar-note { font-size: 8px; }
   .setup-card, .score-panel, .throw-panel { padding: 18px; }
   .rule-options { grid-template-columns: 1fr; }
-  .mode-notes { grid-template-columns: 1fr; gap: 11px; }
-  .mode-notes > div { align-items: center; }
   .game-header { align-items: flex-end; }
   .turn-indicator { padding: 8px; font-size: 9px; }
   .score-value { font-size: 26px; }

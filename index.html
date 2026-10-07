@@ -38,14 +38,18 @@
           <label class="field-label" for="game-mode">Mode de jeu</label>
           <select id="game-mode" class="control" name="mode">
             <option value="301">301 — classique</option>
-            <option value="501">501 — classique</option>
-            <option value="cricket">Cricket</option>
+            <option value="101">101 — rapide</option>
           </select>
 
           <div id="x01-options" class="rule-options">
             <label class="check-option"><input id="double-in" type="checkbox"> <span><strong>Double in</strong><small>La partie commence après un double.</small></span></label>
             <label class="check-option"><input id="double-out" type="checkbox" checked> <span><strong>Double out</strong><small>Terminez exactement sur un double.</small></span></label>
           </div>
+
+          <section class="rules-summary" aria-live="polite">
+            <p class="eyebrow">RÈGLES DU MODE</p>
+            <p id="rules-summary-text"></p>
+          </section>
 
           <div class="players-heading">
             <label class="field-label" for="player-1">Joueurs</label>
@@ -58,11 +62,6 @@
           <p class="privacy-note">Aucun compte, aucune donnée envoyée. La partie reste dans cet onglet.</p>
         </form>
 
-        <div class="mode-notes" aria-label="Modes et fonctions disponibles">
-          <div><span class="mode-number">01</span><span><strong>301 / 501</strong><small>Double in/out au choix</small></span></div>
-          <div><span class="mode-number">02</span><span><strong>Cricket</strong><small>Fermez du 15 au bull</small></span></div>
-          <div><span class="mode-number">↶</span><span><strong>Annulation</strong><small>Annulez le dernier lancer.</small></span></div>
-        </div>
       </section>
 
       <section id="game-screen" class="screen game-screen" hidden>
@@ -85,7 +84,6 @@
               <span id="round-label" class="round-label"></span>
             </div>
             <div id="scoreboard"></div>
-            <div id="cricket-board" class="cricket-board" hidden></div>
             <div id="winner-banner" class="winner-banner" hidden></div>
             <div id="visit-log" class="visit-log">
               <p class="eyebrow">DERNIÈRES FLÉCHETTES</p>
@@ -102,21 +100,11 @@
               <span id="darts-left" class="darts-left"></span>
             </div>
 
-            <div id="visit-summary" class="visit-summary">
-              <span>Score de la volée</span><strong id="visit-score">0</strong>
-            </div>
-
             <div class="input-fields">
-              <label class="field-label" for="segment-select">Secteur</label>
-              <select id="segment-select" class="control"></select>
-              <div id="multiplier-field">
-                <label class="field-label" for="multiplier-select">Valeur</label>
-                <select id="multiplier-select" class="control">
-                  <option value="1">Simple</option>
-                  <option value="2">Double</option>
-                  <option value="3">Triple</option>
-                </select>
-              </div>
+              <label class="field-label" for="points-input">Points de la fléchette</label>
+              <input id="points-input" class="control points-input" type="number" min="0" max="60" step="1" inputmode="numeric" value="0" aria-describedby="points-help">
+              <p id="points-help" class="input-help">Entre 0 et 60. Pour Double in/out, cochez la case si ce lancer est un double.</p>
+              <label class="check-option dart-double-option"><input id="dart-is-double" type="checkbox"> <span><strong>Ce lancer est un double</strong><small>À cocher uniquement pour un double (2 à 40, ou bull intérieur 50).</small></span></label>
             </div>
             <button id="throw-button" class="primary-button throw-button" type="button">Valider la fléchette <span aria-hidden="true">→</span></button>
             <div class="throw-actions">
