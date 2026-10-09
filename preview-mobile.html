@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#edf7fc">
+    <meta name="description" content="Maquette mobile Krazy Dart App : une partie de fléchettes, sans friction.">
+    <title>KDA — aperçu mobile</title>
+    <link rel="stylesheet" href="./preview-mobile.css">
+    <script src="./preview-mobile.js" defer></script>
+  </head>
+  <body>
+    <main class="proposal">
+      <header class="proposal-header">
+        <a class="wordmark" href="./" aria-label="Krazy Dart App, retour à l’application"><span class="wordmark-mark">KDA</span> KRAZY DART APP</a>
+        <span class="proposal-tag">PISTE DE REFONTE · MOBILE D’ABORD</span>
+      </header>
+
+      <section class="showcase" aria-labelledby="proposal-title">
+        <div class="pitch">
+          <p class="kicker">MOINS DE MENUS. PLUS DE JEU.</p>
+          <h1 id="proposal-title">Compter les points.<br><span>Pas les étapes.</span></h1>
+          <p class="pitch-copy">Un compteur pensé pour rester dans une main, même entre deux volées. Les détails s’effacent derrière l’action du moment.</p>
+
+          <div class="screen-picker" role="tablist" aria-label="Aperçu des écrans">
+            <button class="screen-tab active" id="tab-start" type="button" role="tab" aria-selected="true" aria-controls="phone-screen" data-screen="start"><span>01</span> Avant</button>
+            <button class="screen-tab" id="tab-game" type="button" role="tab" aria-selected="false" aria-controls="phone-screen" data-screen="game"><span>02</span> En jeu</button>
+            <button class="screen-tab" id="tab-result" type="button" role="tab" aria-selected="false" aria-controls="phone-screen" data-screen="result"><span>03</span> Résultat</button>
+          </div>
+
+          <ul class="principles">
+            <li><span class="principle-icon">01</span><span><strong>Prêt en quelques secondes</strong><small>Partie rapide déjà sélectionnée. Les règles avancées restent repliées.</small></span></li>
+            <li><span class="principle-icon">02</span><span><strong>Un lancer, un grand bouton</strong><small>Le score et la volée en cours restent toujours faciles à lire.</small></span></li>
+            <li><span class="principle-icon">03</span><span><strong>Les règles à la demande</strong><small>Annuler, finir le tour ou régler les options : accessibles, jamais envahissants.</small></span></li>
+          </ul>
+        </div>
+
+        <div class="device-wrap">
+          <div class="device-caption"><span>APERÇU INTERACTIF</span><span class="live-dot"></span></div>
+          <div class="device">
+            <div class="device-island" aria-hidden="true"></div>
+            <div class="phone-status"><span>9:41</span><span aria-hidden="true">●●●　▰</span></div>
+
+            <div id="phone-screen" class="phone-screen" role="tabpanel" aria-labelledby="tab-start">
+              <section class="app-view start-view" data-view="start">
+                <div class="app-brand"><span class="mini-mark">KDA</span><span class="app-brand-name">KRAZY DART APP</span><span class="avatar">KL</span></div>
+                <div class="welcome"><h2>Nouvelle partie</h2></div>
+                <div class="setup-tile">
+                  <div class="tile-topline"><span>MODE DE JEU</span><button class="tiny-link" type="button">Règles ↗</button></div>
+                  <div class="mode-choice"><button class="mode-option" type="button">101</button><button class="mode-option selected" type="button">301 <span>CLASSIQUE</span></button></div>
+                </div>
+                <div class="players-title"><h3>Qui joue ?</h3><span>2 joueurs</span></div>
+                <div class="player-input-card"><span class="player-avatar avatar-coral">L</span><span class="player-name">Léa</span><span class="edit-mark">✎</span></div>
+                <div class="player-input-card"><span class="player-avatar avatar-blue">S</span><span class="player-name">Samir</span><span class="edit-mark">✎</span></div>
+                <button class="add-player" type="button">＋ <span>Ajouter un joueur</span></button>
+                <div class="setup-spacer"></div>
+                <button class="phone-cta" type="button">Lancer la partie <span>→</span></button>
+              </section>
+
+              <section class="app-view game-view" data-view="game" hidden>
+                <header class="game-top"><button class="round-icon" type="button" aria-label="Quitter la partie">←</button><div><span class="micro-label">PARTIE AMICALE · 301</span><strong>Tour 4</strong></div><button class="round-icon more-button" type="button" aria-label="Plus d’options">···</button></header>
+                <div class="turn-card"><div class="turn-copy"><span class="micro-label">À TOI DE JOUER</span><h2>Léa <span>✦</span></h2></div><div class="darts-left"><b>0</b><span>/ 3<br>fléchettes</span></div><div class="turn-score"><span>TON SCORE</span><strong>174</strong></div></div>
+                <div class="last-throws"><span>VOLÉE EN COURS</span><div class="throw-chips"><i>–</i><i>–</i><i>–</i><b>0 pts</b></div></div>
+                <section class="opponents" aria-label="Scores et dernières volées des autres joueurs">
+                  <div class="opponents-heading">AUTRES JOUEURS <span>DERNIÈRE VOLÉE · SCORE</span></div>
+                  <div class="opponent-row"><span class="opponent-name"><i class="opponent-avatar avatar-blue">S</i>Samir</span><span class="opponent-visit"><b>T20 · 13 · 5</b><small>78 pts</small></span><strong class="opponent-score">228</strong></div>
+                  <div class="opponent-row"><span class="opponent-name"><i class="opponent-avatar avatar-violet">N</i>Nina</span><span class="opponent-visit"><b>T20 · 20 · 0</b><small>80 pts</small></span><strong class="opponent-score">116</strong></div>
+                </section>
+                <div class="score-entry">
+                  <div class="entry-heading"><h3>Ta fléchette</h3><span>Touche ta cible</span></div>
+                  <div class="multiplier-row" role="group" aria-label="Multiplicateur">
+                    <button class="multiplier-chip active" type="button">Simple</button><button class="multiplier-chip" type="button">×2</button><button class="multiplier-chip" type="button">×3</button>
+                  </div>
+                  <div class="target-grid" role="group" aria-label="Exemple de grille de cibles">
+                    <button type="button">20</button><button type="button">19</button><button type="button">18</button><button type="button">17</button>
+                    <button type="button">16</button><button type="button">15</button><button type="button">14</button><button type="button">13</button>
+                    <button type="button">12</button><button type="button">11</button><button type="button">10</button><button type="button">9</button>
+                    <button type="button">8</button><button type="button">7</button><button type="button">6</button><button type="button">5</button>
+                    <button type="button">4</button><button type="button">3</button><button type="button">2</button><button type="button">1</button>
+                  </div>
+                  <div class="special-targets"><button type="button">Raté <b>0</b></button><button type="button">Bull <b>25</b></button><button type="button">Bull <b>50</b></button></div>
+                </div>
+                <div class="score-footer"><button type="button">↶ Annuler</button><button type="button">Fin du tour</button></div>
+              </section>
+
+              <section class="app-view result-view" data-view="result" hidden>
+                <div class="app-brand"><span class="mini-mark">KDA</span><span class="app-brand-name">KRAZY DART APP</span><span class="avatar">KL</span></div>
+                <div class="win-mark" aria-hidden="true">✓</div>
+                <p class="micro-label result-kicker">BELLE PARTIE !</p>
+                <h2>Léa a visé<br><span>juste.</span></h2>
+                <p class="result-subtitle">La victoire se joue sur le dernier double.</p>
+                <div class="winner-card"><div><span class="player-avatar avatar-coral">L</span><span><strong>Léa</strong><small>VICTORIEUSE</small></span></div><span class="winner-crown">✦</span></div>
+                <div class="final-scores"><div><span>Samir</span><strong>32</strong><small>meilleure volée · 100</small></div><div><span>Léa</span><strong class="winner-score">0</strong><small>meilleure volée · 140</small></div></div>
+                <div class="stats-row"><div><strong>18</strong><span>volées</span></div><div><strong>42</strong><span>fléchettes</span></div><div><strong>140</strong><span>meilleure</span></div></div>
+                <div class="result-actions"><button class="phone-cta" type="button">Rejouer <span>→</span></button><button class="share-cta" type="button">Partager le résultat　↗</button></div>
+                <p class="bottom-note">La partie reste privée sur cet appareil.</p>
+              </section>
+            </div>
+            <div class="home-indicator" aria-hidden="true"></div>
+          </div>
+          <p class="device-footnote">Maquette de direction artistique — données fictives</p>
+        </div>
+      </section>
+      <footer class="proposal-footer"><span>KDA · CONCEPT 01</span><span>Simple à démarrer. Facile à jouer.</span></footer>
+    </main>
+  </body>
+</html>

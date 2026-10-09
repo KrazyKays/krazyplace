@@ -357,6 +357,59 @@ function renderScoreboard() {
   scoreboard.append(cards);
 }
 
+function renderActiveTurnSummary() {
+  const player = activePlayer();
+  document.querySelector("#active-player-score").textContent = String(player.score);
+
+  const darts = document.querySelector("#current-visit-darts");
+  darts.replaceChildren();
+  for (let index = 0; index < 3; index += 1) {
+    const dart = document.createElement("span");
+    dart.className = "current-visit-dart";
+    dart.textContent = game.visitDarts[index] || "—";
+    darts.append(dart);
+  }
+  const total = document.createElement("strong");
+  total.className = "current-visit-total";
+  total.textContent = `${game.visitScore} pt${game.visitScore > 1 ? "s" : ""}`;
+  darts.append(total);
+}
+
+function renderCompactScoreboard() {
+  const scoreboard = document.querySelector("#compact-player-list");
+  scoreboard.replaceChildren();
+
+  game.players.forEach((player, index) => {
+    if (index === game.currentPlayer && !game.winner) return;
+
+    const card = document.createElement("div");
+    card.className = "compact-player-card";
+
+    const heading = document.createElement("div");
+    heading.className = "compact-player-heading";
+    const name = document.createElement("span");
+    name.className = "compact-player-name";
+    name.textContent = player.name;
+    const score = document.createElement("strong");
+    score.className = "compact-player-score";
+    score.textContent = String(player.score);
+    heading.append(name, score);
+
+    const lastVisit = document.createElement("span");
+    lastVisit.className = "compact-last-visit";
+    if (player.lastVisit === null) {
+      lastVisit.textContent = "Pas encore de volée";
+    } else {
+      const darts = player.lastVisit.darts.join(" · ");
+      const result = player.lastVisit.busted ? "Annulée" : `${player.lastVisit.score} pts`;
+      lastVisit.textContent = `${darts || "—"} · ${result}`;
+    }
+
+    card.append(heading, lastVisit);
+    scoreboard.append(card);
+  });
+}
+
 function createResultImage() {
   const canvas = document.createElement("canvas");
   canvas.width = 1200;
@@ -549,6 +602,8 @@ function renderGame() {
   }
 
   renderScoreboard();
+  renderActiveTurnSummary();
+  renderCompactScoreboard();
 }
 
 function startGame(event) {

@@ -20,19 +20,13 @@
 
     <main>
       <section id="setup-screen" class="screen setup-screen">
-        <div class="intro">
-          <p class="eyebrow">LE COMPTEUR QUI NE RATE PAS SA CIBLE</p>
-          <h1>À vous<br>de <span>viser juste.</span></h1>
-          <p class="intro-copy">Choisissez votre partie, entrez les joueurs et laissez le comptage aux fléchettes.</p>
-        </div>
-
         <form id="setup-form" class="setup-card">
           <div class="card-heading">
             <div>
-              <p class="eyebrow">NOUVELLE PARTIE</p>
-              <h2>On joue à quoi ?</h2>
+              <p class="eyebrow">KDA · KRAZY DART APP</p>
+              <h2>Nouvelle partie</h2>
             </div>
-            <span class="heading-dart" aria-hidden="true">↗</span>
+            <span class="heading-dart" aria-hidden="true">🎯</span>
           </div>
 
           <label class="field-label" for="game-mode">Mode de jeu</label>
@@ -41,15 +35,17 @@
             <option value="101">101 — rapide</option>
           </select>
 
-          <div id="x01-options" class="rule-options">
-            <label class="check-option"><input id="double-in" type="checkbox"> <span><strong>Double in</strong><small>La partie commence après un double.</small></span></label>
-            <label class="check-option"><input id="double-out" type="checkbox" checked> <span><strong>Double out</strong><small>Terminez exactement sur un double.</small></span></label>
-          </div>
-
-          <section class="rules-summary" aria-live="polite">
-            <p class="eyebrow">RÈGLES DU MODE</p>
-            <p id="rules-summary-text"></p>
-          </section>
+          <details class="advanced-rules">
+            <summary>Options de la partie <span>Double in · Double out</span></summary>
+            <div id="x01-options" class="rule-options">
+              <label class="check-option"><input id="double-in" type="checkbox"> <span><strong>Double in</strong><small>La partie commence après un double.</small></span></label>
+              <label class="check-option"><input id="double-out" type="checkbox" checked> <span><strong>Double out</strong><small>Terminez exactement sur un double.</small></span></label>
+            </div>
+            <section class="rules-summary" aria-live="polite">
+              <p class="eyebrow">RÈGLES DU MODE</p>
+              <p id="rules-summary-text"></p>
+            </section>
+          </details>
 
           <div class="players-heading">
             <label class="field-label" for="player-1">Joueurs</label>
@@ -100,6 +96,22 @@
               <span id="darts-left" class="darts-left"></span>
             </div>
 
+            <section class="active-turn-summary" aria-label="Score et volée en cours">
+              <div class="active-score">
+                <span class="eyebrow">SCORE RESTANT</span>
+                <strong id="active-player-score"></strong>
+              </div>
+              <div class="current-visit">
+                <span class="field-label">Volée en cours</span>
+                <div id="current-visit-darts" class="current-visit-darts"></div>
+              </div>
+            </section>
+
+            <section class="compact-scoreboard" aria-label="Scores et dernières volées des autres joueurs">
+              <div class="compact-scoreboard-heading"><span>LES AUTRES JOUEURS</span><span>DERNIÈRE VOLÉE · SCORE</span></div>
+              <div id="compact-player-list" class="compact-player-list"></div>
+            </section>
+
             <div class="dart-entry">
               <span class="field-label">Multiplicateur</span>
               <div id="multiplier-buttons" class="multiplier-buttons" role="group" aria-label="Choisir le multiplicateur">
@@ -107,7 +119,7 @@
                 <button class="multiplier-button" type="button" data-multiplier="2" aria-pressed="false">Double</button>
                 <button class="multiplier-button" type="button" data-multiplier="3" aria-pressed="false">Triple</button>
               </div>
-              <p id="dart-entry-help" class="input-help">Choisissez Simple, Double ou Triple pour les secteurs 1 à 20, puis touchez une cible. Bull 25 et Bull 50 gardent leur valeur. Chaque clic valide une fléchette ; le multiplicateur reste actif.</p>
+              <p id="dart-entry-help" class="input-help">Choisissez un multiplicateur puis une cible. Bull 25 et Bull 50 gardent leur valeur.</p>
               <span class="field-label target-label">Cible</span>
               <div id="dart-buttons" class="dart-buttons" role="group" aria-label="Choisir une cible de fléchette"></div>
             </div>
